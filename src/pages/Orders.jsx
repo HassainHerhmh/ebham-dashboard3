@@ -163,6 +163,37 @@ function itemStoreLabel(item) {
   return item.store_name || 'بدون محل';
 }
 
+function orderToForm(order) {
+  const items = order?.items?.length
+    ? order.items.map((item) => ({
+      store_id: item.is_external ? EXTERNAL_STORE_ID : (item.store_id || ''),
+      details: item.details || '',
+      invoice_amount: item.is_external ? (item.invoice_amount || '') : '',
+    }))
+    : [{ store_id: '', details: '', invoice_amount: '' }];
+
+  return {
+    customer_name: order?.customer_name || '',
+    customer_phone: order?.customer_phone || '',
+    address_text: order?.address_text || '',
+    map_link: order?.map_link || '',
+    delivery_fee: order?.delivery_fee ?? '',
+    payment_type: order?.payment_type || 'cash',
+    captain_id: order?.captain_id || '',
+    status: order?.status || 'new',
+    items,
+  };
+}
+
+function buildItemsPayload(items) {
+  return items.map((item) => ({
+    store_id: item.store_id === EXTERNAL_STORE_ID ? null : item.store_id,
+    details: item.details,
+    is_external: item.store_id === EXTERNAL_STORE_ID,
+    invoice_amount: item.store_id === EXTERNAL_STORE_ID ? Number(item.invoice_amount || 0) : 0,
+  }));
+}
+
 function mergeOrdersFromServer(serverOrders, localOrders, savingId, fieldSnapshot) {
   const localMap = new Map(localOrders.map(o => [o.id, o]));
   return serverOrders.map((serverOrder, index) => {
@@ -189,7 +220,8 @@ export default function Orders({ user }) {
   const [customers, setCustomers] = useState([]);
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('info');
-  const [addModal, setAddModal] = useState(false);
+  const [orderModal, setOrderModal] = useState({ open: false, mode: 'add', orderId: null });
+  const [editingLocked, setEditingLocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -209,6 +241,8 @@ export default function Orders({ user }) {
     map_link: '',
     delivery_fee: '',
     payment_type: 'cash',
+    captain_id: '',
+    status: 'new',
     items: [{ store_id: '', details: '', invoice_amount: '' }],
   });
 
@@ -245,7 +279,7 @@ export default function Orders({ user }) {
   };
 
   const refreshOrdersSilent = useCallback(async () => {
-    if (savingIdRef.current || addModal) return;
+    if (savingIdRef.current || orderModal.open) return;
     try {
       const ordersRows = await api.listOrders();
       const withNumbers = (ordersRows || []).map((order, index) => ({ ...order, display_number: index + 1 }));
@@ -271,7 +305,7 @@ export default function Orders({ user }) {
     } catch {
       // تجاهل أخطاء التحديث الخلفي
     }
-  }, [addModal, captains, pushNotification]);
+  }, [orderModal.open, captains, pushNotification]);
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
@@ -351,8 +385,14 @@ export default function Orders({ user }) {
     return list;
   }, [filteredByDate, searchTerm, activeTab]);
 
+  const closeOrderModal = () => {
+    setOrderModal({ open: false, mode: 'add', orderId: null });
+    setEditingLocked(false);
+  };
+
   const openAdd = () => {
     setMsg('');
+    setEditingLocked(false);
     setForm({
       customer_name: '',
       customer_phone: '',
@@ -360,9 +400,18 @@ export default function Orders({ user }) {
       map_link: '',
       delivery_fee: '',
       payment_type: 'cash',
+      captain_id: '',
+      status: 'new',
       items: [{ store_id: '', details: '', invoice_amount: '' }],
     });
-    setAddModal(true);
+    setOrderModal({ open: true, mode: 'add', orderId: null });
+  };
+
+  const openEdit = (order) => {
+    setMsg('');
+    setEditingLocked(isTerminalOrderStatus(order.status));
+    setForm(orderToForm(order));
+    setOrderModal({ open: true, mode: 'edit', orderId: order.id });
   };
 
   const applySavedCustomer = (name) => {
@@ -414,25 +463,38 @@ export default function Orders({ user }) {
     setSaving(true);
     setMsg('');
     try {
-      const created = await api.createOrder({
+      const payload = {
         customer_name: form.customer_name,
         customer_phone: form.customer_phone,
         address_text: form.address_text,
         map_link: form.map_link,
         delivery_fee: Number(form.delivery_fee || 0),
         payment_type: form.payment_type,
-        items: form.items.map((item) => ({
-          store_id: item.store_id === EXTERNAL_STORE_ID ? null : item.store_id,
-          details: item.details,
-          is_external: item.store_id === EXTERNAL_STORE_ID,
-          invoice_amount: item.store_id === EXTERNAL_STORE_ID ? Number(item.invoice_amount || 0) : 0,
-        })),
+        items: buildItemsPayload(form.items),
         ...userPayload(user),
-      });
-      setAddModal(false);
-      await load();
-      const message = `المستخدم ${user?.name || 'مستخدم'} أضاف الطلب رقم 1 للعميل ${created.customer_name}`;
-      notify(message);
+      };
+
+      if (orderModal.mode === 'edit') {
+        let captain_id = form.captain_id || null;
+        let status = form.status;
+        if (!editingLocked) {
+          if (captain_id && (status === 'new' || !status)) status = 'assigned';
+          else if (!captain_id && status === 'assigned') status = 'new';
+        }
+        await api.updateOrder(orderModal.orderId, {
+          ...payload,
+          captain_id: editingLocked ? undefined : captain_id,
+          status: editingLocked ? undefined : status,
+        });
+        closeOrderModal();
+        await load();
+        notify(`تم تعديل الطلب للعميل ${form.customer_name}`);
+      } else {
+        const created = await api.createOrder(payload);
+        closeOrderModal();
+        await load();
+        notify(`المستخدم ${user?.name || 'مستخدم'} أضاف الطلب للعميل ${created.customer_name}`);
+      }
     } catch (err) {
       notify(err.message, 'error');
     } finally {
@@ -588,6 +650,7 @@ export default function Orders({ user }) {
                   <th>الإجمالي</th>
                   <th>وقت الحركة</th>
                   <th>المستخدم</th>
+                  <th>الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -708,6 +771,16 @@ export default function Orders({ user }) {
                       </div>
                     </td>
                     <td>{orderUserLabel(order)}</td>
+                    <td className="min-w-[120px]">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => openEdit(order)}
+                        disabled={savingId === order.id}
+                      >
+                        تعديل الطلب
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -716,10 +789,10 @@ export default function Orders({ user }) {
         )}
       </div>
 
-      {addModal && (
-        <div className="modal-overlay" onClick={() => setAddModal(false)}>
+      {orderModal.open && (
+        <div className="modal-overlay" onClick={closeOrderModal}>
           <div className="modal modal--wide" onClick={e => e.stopPropagation()}>
-            <h3>إضافة طلب</h3>
+            <h3>{orderModal.mode === 'edit' ? 'تعديل الطلب' : 'إضافة طلب'}</h3>
             <form onSubmit={saveOrder}>
               <div className="form-row">
                 <div className="form-group">
@@ -814,9 +887,48 @@ export default function Orders({ user }) {
                 </div>
               </div>
 
+              {orderModal.mode === 'edit' && (
+                <div className="form-row mt-2">
+                  <div className="form-group">
+                    <label>الكابتن</label>
+                    <select
+                      value={form.captain_id}
+                      disabled={editingLocked}
+                      onChange={e => setForm({ ...form, captain_id: e.target.value })}
+                    >
+                      <option value="">بدون تعيين</option>
+                      {captains.map(c => (
+                        <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>الحالة</label>
+                    <select
+                      value={form.status}
+                      disabled={editingLocked}
+                      onChange={e => setForm({ ...form, status: e.target.value })}
+                    >
+                      {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {editingLocked && (
+                    <div className="form-group flex items-end">
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        الطلب مكتمل/ملغي — لا يمكن تغيير الكابتن أو الحالة
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="modal-actions">
-                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'جاري الحفظ...' : 'حفظ الطلب'}</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setAddModal(false)}>إلغاء</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'جاري الحفظ...' : (orderModal.mode === 'edit' ? 'حفظ التعديلات' : 'حفظ الطلب')}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={closeOrderModal}>إلغاء</button>
               </div>
             </form>
           </div>
