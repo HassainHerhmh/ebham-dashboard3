@@ -244,12 +244,16 @@ export const api = {
     body: JSON.stringify(data),
   }),
   getOrderInvoices: (orderId) => request(`/orders/${orderId}/invoices`),
+  getChatThreads: () => request('/chat/threads'),
   getChatMessages: (captainId) => request(`/chat/${captainId}`),
-  sendChatMessage: (captainId, data) => request(`/chat/${captainId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  }),
+  sendChatMessage: async (captainId, { message, sender_id, sender_name, file } = {}) => {
+    const form = new FormData();
+    if (message) form.append('message', message);
+    if (sender_id) form.append('sender_id', sender_id);
+    if (sender_name) form.append('sender_name', sender_name);
+    if (file) form.append('attachment', file);
+    return request(`/chat/${captainId}`, { method: 'POST', body: form });
+  },
 };
 
 export const DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];

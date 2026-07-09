@@ -1,17 +1,82 @@
-import { useEffect, useMemo, useState } from 'react';
-import { api } from '../api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Paperclip, Send } from 'lucide-react';
+import { api, mediaUrl } from '../api';
+
+function formatChatTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' });
+}
+
+function threadPreview(thread) {
+  if (thread?.last_message) return thread.last_message;
+  if (thread?.last_attachment_name) return `📎 ${thread.last_attachment_name}`;
+  return 'لا توجد رسائل بعد';
+}
+
+function isImageMime(mime) {
+  return String(mime || '').startsWith('image/');
+}
+
+function ChatMessage({ message, mine }) {
+  const hasAttachment = Boolean(message.attachment_path);
+  const attachmentUrl = hasAttachment ? mediaUrl(message.attachment_path) : '';
+
+  return (
+    <div className={`chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}>
+      {!mine && (
+        <div className="chat-bubble__sender">{message.sender_name || 'الكابتن'}</div>
+      )}
+      {message.message ? <div className="chat-bubble__text">{message.message}</div> : null}
+      {hasAttachment && (
+        <div className="chat-bubble__attachment">
+          {isImageMime(message.attachment_mime) ? (
+            <a href={attachmentUrl} target="_blank" rel="noreferrer">
+              <img src={attachmentUrl} alt={message.attachment_name || 'مرفق'} />
+            </a>
+          ) : (
+            <a href={attachmentUrl} target="_blank" rel="noreferrer" className="chat-bubble__file">
+              📎 {message.attachment_name || 'مرفق'}
+            </a>
+          )}
+        </div>
+      )}
+      <div className="chat-bubble__time">{formatChatTime(message.created_at)}</div>
+    </div>
+  );
+}
 
 export default function Chat({ user }) {
-  const [captains, setCaptains] = useState([]);
+  const [threads, setThreads] = useState([]);
   const [captainId, setCaptainId] = useState('');
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
+  const [pendingFile, setPendingFile] = useState(null);
   const [sending, setSending] = useState(false);
+  const [search, setSearch] = useState('');
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const selectedCaptain = useMemo(
-    () => captains.find((c) => c.id === captainId),
-    [captains, captainId]
+    () => threads.find((c) => c.id === captainId),
+    [threads, captainId]
   );
+
+  const filteredThreads = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return threads;
+    return threads.filter((c) =>
+      String(c.name || '').toLowerCase().includes(q)
+      || String(c.captain_number || '').toLowerCase().includes(q)
+    );
+  }, [threads, search]);
+
+  const loadThreads = async () => {
+    const rows = await api.getChatThreads();
+    setThreads(rows || []);
+    if (!captainId && rows?.[0]?.id) setCaptainId(rows[0].id);
+  };
 
   const loadMessages = async (id) => {
     if (!id) return setMessages([]);
@@ -20,10 +85,9 @@ export default function Chat({ user }) {
   };
 
   useEffect(() => {
-    api.getCaptains().then((rows) => {
-      setCaptains(rows || []);
-      if (rows?.[0]?.id) setCaptainId(rows[0].id);
-    });
+    loadThreads().catch(() => {});
+    const timer = setInterval(() => loadThreads().catch(() => {}), 15000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -33,89 +97,154 @@ export default function Chat({ user }) {
     return () => clearInterval(timer);
   }, [captainId]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, captainId]);
+
   const send = async () => {
     const body = text.trim();
-    if (!captainId || !body) return;
+    if (!captainId || (!body && !pendingFile)) return;
     setSending(true);
     try {
       await api.sendChatMessage(captainId, {
         message: body,
         sender_id: user?.id,
         sender_name: user?.name || 'المنصة',
+        file: pendingFile,
       });
       setText('');
-      await loadMessages(captainId);
+      setPendingFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      await Promise.all([loadMessages(captainId), loadThreads()]);
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <>
-      <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+    <div className="chat-page">
+      <aside className="chat-sidebar">
+        <div className="chat-sidebar__head">
           <h2>الدردشة</h2>
-          <p>محادثة مباشرة بين المنصة والكابتن</p>
+          <p>الكباتن</p>
         </div>
-        <select
-          className="finance-filter-select"
-          value={captainId}
-          onChange={(e) => setCaptainId(e.target.value)}
-        >
-          <option value="">اختر الكابتن</option>
-          {captains.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} ({c.captain_number})
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className="chat-sidebar__search">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="بحث عن كابتن..."
+          />
+        </div>
+        <div className="chat-sidebar__list">
+          {filteredThreads.length === 0 ? (
+            <div className="chat-sidebar__empty">لا يوجد كباتن</div>
+          ) : (
+            filteredThreads.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`chat-thread ${captainId === c.id ? 'chat-thread--active' : ''}`}
+                onClick={() => setCaptainId(c.id)}
+              >
+                <div className="chat-thread__avatar">
+                  {c.photo ? (
+                    <img src={mediaUrl(c.photo)} alt="" />
+                  ) : (
+                    <span>{String(c.name || 'ك').slice(0, 1)}</span>
+                  )}
+                </div>
+                <div className="chat-thread__body">
+                  <div className="chat-thread__top">
+                    <strong>{c.name}</strong>
+                    <span>{formatChatTime(c.last_message_at)}</span>
+                  </div>
+                  <div className="chat-thread__preview">{threadPreview(c)}</div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </aside>
 
-      <div className="card">
+      <section className="chat-main">
         {!captainId ? (
-          <div className="empty-state">اختر الكابتن لعرض المحادثة</div>
+          <div className="chat-main__empty">اختر كابتناً من القائمة لبدء المحادثة</div>
         ) : (
           <>
-            <div className="mb-3 text-sm text-gray-500 dark:text-gray-400">
-              المحادثة مع: <strong>{selectedCaptain?.name || '—'}</strong>
-            </div>
-            <div className="max-h-[420px] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-900/20 space-y-2">
+            <header className="chat-main__header">
+              <div className="chat-main__title">
+                <strong>{selectedCaptain?.name || '—'}</strong>
+                <span>{selectedCaptain?.captain_number || ''}</span>
+              </div>
+            </header>
+
+            <div className="chat-main__messages">
               {messages.length === 0 ? (
-                <div className="text-sm text-gray-500">لا توجد رسائل بعد</div>
+                <div className="chat-main__no-messages">لا توجد رسائل بعد — ابدأ المحادثة</div>
               ) : (
-                messages.map((m) => {
-                  const mine = m.sender_type === 'platform';
-                  return (
-                    <div
-                      key={m.id}
-                      className={`rounded-lg px-3 py-2 text-sm ${mine ? 'bg-blue-100 dark:bg-blue-900/30 mr-auto' : 'bg-white dark:bg-gray-800 ml-auto'}`}
-                      style={{ maxWidth: '80%' }}
-                    >
-                      <div className="font-semibold mb-1">{m.sender_name || (mine ? 'المنصة' : 'الكابتن')}</div>
-                      <div>{m.message}</div>
-                    </div>
-                  );
-                })
+                messages.map((m) => (
+                  <ChatMessage key={m.id} message={m} mine={m.sender_type === 'platform'} />
+                ))
               )}
+              <div ref={messagesEndRef} />
             </div>
 
-            <div className="mt-3 flex gap-2">
-              <input
-                className="w-full border rounded-xl px-3 py-2 bg-white dark:bg-gray-800"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="اكتب الرسالة..."
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') send();
-                }}
-              />
-              <button type="button" className="btn btn-primary" onClick={send} disabled={sending}>
-                {sending ? 'إرسال...' : 'إرسال'}
-              </button>
-            </div>
+            <footer className="chat-composer">
+              {pendingFile && (
+                <div className="chat-composer__pending">
+                  <span>📎 {pendingFile.name}</span>
+                  <button type="button" onClick={() => {
+                    setPendingFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  >
+                    إزالة
+                  </button>
+                </div>
+              )}
+              <div className="chat-composer__row">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx"
+                  onChange={(e) => setPendingFile(e.target.files?.[0] || null)}
+                />
+                <button
+                  type="button"
+                  className="chat-composer__attach"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="إرفاق ملف"
+                >
+                  <Paperclip size={20} />
+                </button>
+                <input
+                  className="chat-composer__input"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="اكتب الرسالة..."
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="chat-composer__send"
+                  onClick={send}
+                  disabled={sending || (!text.trim() && !pendingFile)}
+                  title="إرسال"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+            </footer>
           </>
         )}
-      </div>
-    </>
+      </section>
+    </div>
   );
 }
