@@ -2,11 +2,39 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Paperclip, Send } from 'lucide-react';
 import { api, mediaUrl } from '../api';
 
+const CHAT_SEEN_KEY = 'platform_chat_seen_map_v1';
+
 function formatChatTime(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleString('ar-YE', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function readChatSeenMap() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_SEEN_KEY) || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeChatSeenMap(next) {
+  localStorage.setItem(CHAT_SEEN_KEY, JSON.stringify(next));
+}
+
+function markCaptainChatSeen(captainId, rows) {
+  if (!captainId) return;
+  const latestCaptainMessageAt = (rows || [])
+    .filter((m) => m.sender_type === 'captain')
+    .map((m) => String(m.created_at || ''))
+    .sort()
+    .at(-1);
+  if (!latestCaptainMessageAt) return;
+  const seen = readChatSeenMap();
+  seen[captainId] = latestCaptainMessageAt;
+  writeChatSeenMap(seen);
 }
 
 function threadPreview(thread) {
@@ -82,6 +110,7 @@ export default function Chat({ user }) {
     if (!id) return setMessages([]);
     const rows = await api.getChatMessages(id);
     setMessages(rows || []);
+    markCaptainChatSeen(id, rows || []);
   };
 
   useEffect(() => {

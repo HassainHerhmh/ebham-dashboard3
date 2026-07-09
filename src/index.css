@@ -1967,10 +1967,11 @@ table tr:hover td {
 }
 
 .chat-bubble__time {
-  font-size: 0.68rem;
-  color: #64748b;
+  font-size: 0.67rem;
+  color: #94a3b8;
   text-align: left;
-  margin-top: 0.2rem;
+  margin-top: 0.25rem;
+  font-weight: 500;
 }
 
 .chat-composer {

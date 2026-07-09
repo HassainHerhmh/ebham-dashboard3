@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sun, Moon, Bell, User, Menu, LogOut, MessageCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { ROLE_LABELS, mediaUrl } from '../api';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { api, ROLE_LABELS, mediaUrl } from '../api';
 import { useNotifications } from '../context/NotificationsContext';
 import { hasPermission } from '../utils/permissions';
+
+const CHAT_SEEN_KEY = 'platform_chat_seen_map_v1';
 
 function formatNotificationTime(value) {
   try {
@@ -15,10 +17,12 @@ function formatNotificationTime(value) {
 
 export default function Header({ user, onMenuClick, onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem('theme') === 'dark'
   );
   const [open, setOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
   const panelRef = useRef(null);
   const {
     notifications,
@@ -52,6 +56,56 @@ export default function Header({ user, onMenuClick, onLogout }) {
   };
 
   const canOpenChat = hasPermission(user, 'chat', 'view');
+
+  useEffect(() => {
+    if (!canOpenChat) {
+      setChatUnread(0);
+      return undefined;
+    }
+
+    const readSeenMap = () => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(CHAT_SEEN_KEY) || '{}');
+        return raw && typeof raw === 'object' ? raw : {};
+      } catch {
+        return {};
+      }
+    };
+
+    const writeSeenMap = (next) => {
+      localStorage.setItem(CHAT_SEEN_KEY, JSON.stringify(next));
+    };
+
+    const refreshChatUnread = async () => {
+      const threads = await api.getChatThreads();
+      const list = threads || [];
+      const seenMap = readSeenMap();
+
+      if (location.pathname === '/chat') {
+        for (const thread of list) {
+          if (thread?.id && thread?.last_message_at && thread?.last_sender_type === 'captain') {
+            seenMap[thread.id] = String(thread.last_message_at);
+          }
+        }
+        writeSeenMap(seenMap);
+        setChatUnread(0);
+        return;
+      }
+
+      const unread = list.filter((thread) => {
+        if (thread?.last_sender_type !== 'captain') return false;
+        if (!thread?.last_message_at || !thread?.id) return false;
+        const seenAt = seenMap[thread.id];
+        if (!seenAt) return true;
+        return new Date(thread.last_message_at).getTime() > new Date(seenAt).getTime();
+      }).length;
+      setChatUnread(unread);
+    };
+
+    refreshChatUnread().catch(() => {});
+    const timer = setInterval(() => refreshChatUnread().catch(() => {}), 5000);
+    return () => clearInterval(timer);
+  }, [canOpenChat, location.pathname]);
 
   return (
     <header className="app-header px-4 md:px-6 py-4 flex items-center justify-between transition-colors duration-300">
@@ -134,6 +188,9 @@ export default function Header({ user, onMenuClick, onLogout }) {
             title="الدردشة"
           >
             <MessageCircle size={20} className="text-gray-600 dark:text-gray-300" />
+            {chatUnread > 0 && (
+              <span className="notifications-badge">{chatUnread > 9 ? '9+' : chatUnread}</span>
+            )}
           </button>
         )}
 
