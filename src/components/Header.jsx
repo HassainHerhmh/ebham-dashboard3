@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sun, Moon, Bell, User, Menu, LogOut } from 'lucide-react';
+import { Sun, Moon, Bell, User, Menu, LogOut, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ROLE_LABELS, mediaUrl } from '../api';
 import { useNotifications } from '../context/NotificationsContext';
 
@@ -12,6 +13,7 @@ function formatNotificationTime(value) {
 }
 
 export default function Header({ user, onMenuClick, onLogout }) {
+  const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem('theme') === 'dark'
   );
@@ -120,6 +122,15 @@ export default function Header({ user, onMenuClick, onLogout }) {
             </div>
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/chat')}
+          className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+          title="الدردشة"
+        >
+          <MessageCircle size={20} className="text-gray-600 dark:text-gray-300" />
+        </button>
 
         <button
           type="button"

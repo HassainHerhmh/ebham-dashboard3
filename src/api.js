@@ -243,6 +243,13 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
+  getOrderInvoices: (orderId) => request(`/orders/${orderId}/invoices`),
+  getChatMessages: (captainId) => request(`/chat/${captainId}`),
+  sendChatMessage: (captainId, data) => request(`/chat/${captainId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
 };
 
 export const DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];

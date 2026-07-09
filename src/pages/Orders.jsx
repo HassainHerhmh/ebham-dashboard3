@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, Search, Wifi } from 'lucide-react';
-import { api } from '../api';
+import { api, mediaUrl } from '../api';
 import { useNotifications } from '../context/NotificationsContext';
 
 const STATUS_LABELS = {
@@ -230,6 +230,7 @@ export default function Orders({ user }) {
   const [dateFilter, setDateFilter] = useState('today');
   const [liveUpdates, setLiveUpdates] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
+  const [invoicePreview, setInvoicePreview] = useState({ open: false, order: null });
   const fieldSnapshot = useRef({});
   const savingIdRef = useRef(null);
   const ordersSnapshotRef = useRef(new Map());
@@ -388,6 +389,10 @@ export default function Orders({ user }) {
   const closeOrderModal = () => {
     setOrderModal({ open: false, mode: 'add', orderId: null });
     setEditingLocked(false);
+  };
+
+  const openInvoicePreview = (order) => {
+    setInvoicePreview({ open: true, order });
   };
 
   const openAdd = () => {
@@ -648,6 +653,7 @@ export default function Orders({ user }) {
                   <th>الحالة</th>
                   <th>طريقة الدفع</th>
                   <th>الإجمالي</th>
+                  <th>عرض فواتير</th>
                   <th>وقت الحركة</th>
                   <th>المستخدم</th>
                   <th>الإجراءات</th>
@@ -759,6 +765,19 @@ export default function Orders({ user }) {
                     </td>
                     <td className="min-w-[100px] font-semibold whitespace-nowrap">
                       {formatMoney(orderGrandTotal(order))} ر.ي
+                    </td>
+                    <td className="min-w-[110px]">
+                      {(order.invoice_attachments || []).length > 0 ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => openInvoicePreview(order)}
+                        >
+                          عرض ({order.invoice_attachments.length})
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">—</span>
+                      )}
                     </td>
                     <td className="min-w-[120px]">
                       <div className="orders-timeline">
@@ -931,6 +950,40 @@ export default function Orders({ user }) {
                 <button type="button" className="btn btn-secondary" onClick={closeOrderModal}>إلغاء</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {invoicePreview.open && (
+        <div className="modal-overlay" onClick={() => setInvoicePreview({ open: false, order: null })}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>فواتير الطلب #{invoicePreview.order?.display_number}</h3>
+            {(invoicePreview.order?.invoice_attachments || []).length === 0 ? (
+              <p className="text-sm text-gray-500">لا توجد مرفقات</p>
+            ) : (
+              <div className="space-y-2 mt-3">
+                {invoicePreview.order.invoice_attachments.map((item, idx) => (
+                  <a
+                    key={item.id}
+                    href={mediaUrl(item.file_path)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block border rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    {item.file_name || `مرفق ${idx + 1}`}
+                  </a>
+                ))}
+              </div>
+            )}
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setInvoicePreview({ open: false, order: null })}
+              >
+                إغلاق
+              </button>
+            </div>
           </div>
         </div>
       )}
