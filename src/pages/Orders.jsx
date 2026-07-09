@@ -163,12 +163,18 @@ function itemStoreLabel(item) {
   return item.store_name || 'بدون محل';
 }
 
+function formatItemDetailsLine(item) {
+  const amount = Number(item.invoice_amount || 0);
+  const price = amount > 0 ? ` — ${formatMoney(amount)} ر.ي` : '';
+  return `${itemStoreLabel(item)}: ${item.details || '—'}${price}`;
+}
+
 function orderToForm(order) {
   const items = order?.items?.length
     ? order.items.map((item) => ({
       store_id: item.is_external ? EXTERNAL_STORE_ID : (item.store_id || ''),
       details: item.details || '',
-      invoice_amount: item.is_external ? (item.invoice_amount || '') : '',
+      invoice_amount: item.invoice_amount ? String(item.invoice_amount) : '',
     }))
     : [{ store_id: '', details: '', invoice_amount: '' }];
 
@@ -190,7 +196,7 @@ function buildItemsPayload(items) {
     store_id: item.store_id === EXTERNAL_STORE_ID ? null : item.store_id,
     details: item.details,
     is_external: item.store_id === EXTERNAL_STORE_ID,
-    invoice_amount: item.store_id === EXTERNAL_STORE_ID ? Number(item.invoice_amount || 0) : 0,
+    invoice_amount: Number(item.invoice_amount || 0),
   }));
 }
 
@@ -437,12 +443,7 @@ export default function Orders({ user }) {
       items: prev.items.map((item, i) => {
         if (i !== idx) return item;
         if (field === 'store_id') {
-          const external = value === EXTERNAL_STORE_ID;
-          return {
-            ...item,
-            store_id: value,
-            invoice_amount: external ? item.invoice_amount : '',
-          };
+          return { ...item, store_id: value };
         }
         return { ...item, [field]: value };
       }),
@@ -665,7 +666,7 @@ export default function Orders({ user }) {
                     <td>{order.display_number}</td>
                     <td>{order.customer_name}</td>
                     <td>{order.customer_phone || '—'}</td>
-                    <td className="min-w-[180px]">{(order.items || []).map(i => `${itemStoreLabel(i)}: ${i.details}`).join(' | ') || '—'}</td>
+                    <td className="min-w-[180px]">{(order.items || []).map(formatItemDetailsLine).join(' | ') || '—'}</td>
                     <td className="min-w-[140px]">
                       <input
                         className="orders-table-input"
@@ -859,16 +860,16 @@ export default function Orders({ user }) {
                         placeholder={isExternal ? 'مثال: توصيل خارجي / خدمة' : 'مثال: 2 دجاج + 1 مشروب'}
                       />
                     </div>
-                    {isExternal && (
+                    {item.store_id && (
                       <div className="form-group">
-                        <label>مبلغ الخدمة (اختياري)</label>
+                        <label>{isExternal ? 'مبلغ الخدمة (اختياري)' : 'مبلغ الفاتورة (اختياري)'}</label>
                         <input
                           type="number"
                           min="0"
                           step="1"
                           value={item.invoice_amount}
                           onChange={e => setItem(idx, 'invoice_amount', e.target.value)}
-                          placeholder="يُدخله الكابتن لاحقاً"
+                          placeholder={isExternal ? 'يُدخله الكابتن لاحقاً' : 'مبلغ فاتورة المحل'}
                         />
                       </div>
                     )}
