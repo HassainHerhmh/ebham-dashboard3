@@ -169,6 +169,13 @@ function formatItemDetailsLine(item) {
   return `${itemStoreLabel(item)}: ${item.details || '—'}${price}`;
 }
 
+function isImageAttachment(item) {
+  const mime = String(item?.mime_type || '').toLowerCase();
+  if (mime.startsWith('image/')) return true;
+  const name = String(item?.file_name || item?.file_path || '').toLowerCase();
+  return /\.(png|jpe?g|webp|gif|bmp|svg)$/.test(name);
+}
+
 function orderToForm(order) {
   const items = order?.items?.length
     ? order.items.map((item) => ({
@@ -962,17 +969,34 @@ export default function Orders({ user }) {
             {(invoicePreview.order?.invoice_attachments || []).length === 0 ? (
               <p className="text-sm text-gray-500">لا توجد مرفقات</p>
             ) : (
-              <div className="space-y-2 mt-3">
+              <div className="order-invoice-preview-grid mt-3">
                 {invoicePreview.order.invoice_attachments.map((item, idx) => (
-                  <a
-                    key={item.id}
-                    href={mediaUrl(item.file_path)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block border rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    {item.file_name || `مرفق ${idx + 1}`}
-                  </a>
+                  isImageAttachment(item) ? (
+                    <a
+                      key={item.id}
+                      href={mediaUrl(item.file_path)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="order-invoice-preview-item"
+                      title={item.file_name || `مرفق ${idx + 1}`}
+                    >
+                      <img
+                        src={mediaUrl(item.file_path)}
+                        alt={item.file_name || `مرفق ${idx + 1}`}
+                        loading="lazy"
+                      />
+                    </a>
+                  ) : (
+                    <a
+                      key={item.id}
+                      href={mediaUrl(item.file_path)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="order-invoice-preview-file"
+                    >
+                      {item.file_name || `مرفق ${idx + 1}`}
+                    </a>
+                  )
                 ))}
               </div>
             )}

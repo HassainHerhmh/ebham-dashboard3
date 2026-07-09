@@ -351,6 +351,22 @@ table tr:hover td {
   @apply flex gap-3 mt-5;
 }
 
+.order-invoice-preview-grid {
+  @apply grid grid-cols-2 sm:grid-cols-3 gap-3;
+}
+
+.order-invoice-preview-item {
+  @apply block border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900;
+}
+
+.order-invoice-preview-item img {
+  @apply w-full h-32 object-cover;
+}
+
+.order-invoice-preview-file {
+  @apply block border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm;
+}
+
 .stats-grid {
   @apply grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6;
 }
