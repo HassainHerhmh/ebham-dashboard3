@@ -86,7 +86,7 @@ export default function App() {
                 <Route path="/captains" element={<ProtectedRoute user={user} section="captains"><Captains /></ProtectedRoute>} />
                 <Route path="/shifts" element={<ProtectedRoute user={user} section="shifts"><Shifts /></ProtectedRoute>} />
                 <Route path="/messages" element={<ProtectedRoute user={user} section="messages"><Messages /></ProtectedRoute>} />
-                <Route path="/chat" element={<ProtectedRoute user={user} section="messages"><Chat user={user} /></ProtectedRoute>} />
+                <Route path="/chat" element={<ProtectedRoute user={user} section="chat"><Chat user={user} /></ProtectedRoute>} />
                 <Route path="/attendance" element={<ProtectedRoute user={user} section="reports_attendance"><Attendance /></ProtectedRoute>} />
                 <Route path="/finance" element={<ProtectedRoute user={user} section="finance"><Finance /></ProtectedRoute>} />
                 <Route path="/orders" element={<ProtectedRoute user={user} section="orders"><Orders user={user} /></ProtectedRoute>} />

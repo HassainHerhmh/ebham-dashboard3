@@ -7,6 +7,7 @@ import {
   Truck,
   Clock,
   MessageSquare,
+  MessageCircle,
   ClipboardCheck,
   Wallet,
   ShoppingCart,
@@ -24,6 +25,7 @@ const MENU = [
   { path: '/captains', label: 'الكباتن', icon: Truck, section: 'captains' },
   { path: '/shifts', label: 'الدوام', icon: Clock, section: 'shifts' },
   { path: '/messages', label: 'الرسائل', icon: MessageSquare, section: 'messages' },
+  { path: '/chat', label: 'الدردشة', icon: MessageCircle, section: 'chat' },
   { path: '/finance', label: 'الماليات', icon: Wallet, section: 'finance' },
   { path: '/orders', label: 'الطلبات', icon: ShoppingCart, section: 'orders' },
 ];

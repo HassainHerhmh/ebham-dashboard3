@@ -29,6 +29,7 @@ export const permissionGroups = [
       { key: 'captains', label: 'الكباتن', path: '/captains' },
       { key: 'shifts', label: 'الدوام', path: '/shifts' },
       { key: 'messages', label: 'الرسائل', path: '/messages' },
+      { key: 'chat', label: 'الدردشة', path: '/chat' },
       { key: 'orders', label: 'الطلبات', path: '/orders' },
     ],
   },

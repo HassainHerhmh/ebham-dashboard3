@@ -3,6 +3,7 @@ import { Sun, Moon, Bell, User, Menu, LogOut, MessageCircle } from 'lucide-react
 import { useNavigate } from 'react-router-dom';
 import { ROLE_LABELS, mediaUrl } from '../api';
 import { useNotifications } from '../context/NotificationsContext';
+import { hasPermission } from '../utils/permissions';
 
 function formatNotificationTime(value) {
   try {
@@ -49,6 +50,8 @@ export default function Header({ user, onMenuClick, onLogout }) {
       return next;
     });
   };
+
+  const canOpenChat = hasPermission(user, 'chat', 'view');
 
   return (
     <header className="app-header px-4 md:px-6 py-4 flex items-center justify-between transition-colors duration-300">
@@ -123,14 +126,16 @@ export default function Header({ user, onMenuClick, onLogout }) {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate('/chat')}
-          className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
-          title="الدردشة"
-        >
-          <MessageCircle size={20} className="text-gray-600 dark:text-gray-300" />
-        </button>
+        {canOpenChat && (
+          <button
+            type="button"
+            onClick={() => navigate('/chat')}
+            className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+            title="الدردشة"
+          >
+            <MessageCircle size={20} className="text-gray-600 dark:text-gray-300" />
+          </button>
+        )}
 
         <button
           type="button"
