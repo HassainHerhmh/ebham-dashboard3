@@ -35,6 +35,7 @@ const DATE_FILTERS = [
 ];
 
 const POLL_MS = 5000;
+const EXTERNAL_STORE_ID = '__external__';
 
 function captainLabel(captains, captainId) {
   const captain = captains.find(c => c.id === captainId);
@@ -150,8 +151,16 @@ function orderGrandTotal(order) {
   if (order.grand_total !== undefined) return Number(order.grand_total || 0);
   const invoice = order.invoice_total !== undefined
     ? Number(order.invoice_total || 0)
-    : (order.items || []).reduce((sum, item) => sum + Number(item.invoice_amount || 0), 0);
-  return invoice + Number(order.delivery_fee || 0);
+    : (order.items || []).reduce((sum, item) => sum + (item.is_external ? 0 : Number(item.invoice_amount || 0)), 0);
+  const external = order.external_total !== undefined
+    ? Number(order.external_total || 0)
+    : (order.items || []).reduce((sum, item) => sum + (item.is_external ? Number(item.invoice_amount || 0) : 0), 0);
+  return invoice + external + Number(order.delivery_fee || 0);
+}
+
+function itemStoreLabel(item) {
+  if (item.is_external) return 'طلب خارجي';
+  return item.store_name || 'بدون محل';
 }
 
 function mergeOrdersFromServer(serverOrders, localOrders, savingId, fieldSnapshot) {
@@ -200,7 +209,7 @@ export default function Orders({ user }) {
     map_link: '',
     delivery_fee: '',
     payment_type: 'cash',
-    items: [{ store_id: '', details: '' }],
+    items: [{ store_id: '', details: '', invoice_amount: '' }],
   });
 
   const customerMap = useMemo(
@@ -351,7 +360,7 @@ export default function Orders({ user }) {
       map_link: '',
       delivery_fee: '',
       payment_type: 'cash',
-      items: [{ store_id: '', details: '' }],
+      items: [{ store_id: '', details: '', invoice_amount: '' }],
     });
     setAddModal(true);
   };
@@ -371,12 +380,26 @@ export default function Orders({ user }) {
   const setItem = (idx, field, value) => {
     setForm(prev => ({
       ...prev,
-      items: prev.items.map((item, i) => (i === idx ? { ...item, [field]: value } : item)),
+      items: prev.items.map((item, i) => {
+        if (i !== idx) return item;
+        if (field === 'store_id') {
+          const external = value === EXTERNAL_STORE_ID;
+          return {
+            ...item,
+            store_id: value,
+            invoice_amount: external ? item.invoice_amount : '',
+          };
+        }
+        return { ...item, [field]: value };
+      }),
     }));
   };
 
   const addItemRow = () => {
-    setForm(prev => ({ ...prev, items: [...prev.items, { store_id: '', details: '' }] }));
+    setForm(prev => ({
+      ...prev,
+      items: [...prev.items, { store_id: '', details: '', invoice_amount: '' }],
+    }));
   };
 
   const removeItemRow = (idx) => {
@@ -398,7 +421,12 @@ export default function Orders({ user }) {
         map_link: form.map_link,
         delivery_fee: Number(form.delivery_fee || 0),
         payment_type: form.payment_type,
-        items: form.items,
+        items: form.items.map((item) => ({
+          store_id: item.store_id === EXTERNAL_STORE_ID ? null : item.store_id,
+          details: item.details,
+          is_external: item.store_id === EXTERNAL_STORE_ID,
+          invoice_amount: item.store_id === EXTERNAL_STORE_ID ? Number(item.invoice_amount || 0) : 0,
+        })),
         ...userPayload(user),
       });
       setAddModal(false);
@@ -568,7 +596,7 @@ export default function Orders({ user }) {
                     <td>{order.display_number}</td>
                     <td>{order.customer_name}</td>
                     <td>{order.customer_phone || '—'}</td>
-                    <td className="min-w-[180px]">{(order.items || []).map(i => `${i.store_name}: ${i.details}`).join(' | ') || '—'}</td>
+                    <td className="min-w-[180px]">{(order.items || []).map(i => `${itemStoreLabel(i)}: ${i.details}`).join(' | ') || '—'}</td>
                     <td className="min-w-[140px]">
                       <input
                         className="orders-table-input"
@@ -719,12 +747,15 @@ export default function Orders({ user }) {
 
               <div className="finance-admin-section mt-2">
                 <h4 className="font-bold mb-3">تفاصيل الطلب حسب المحل</h4>
-                {form.items.map((item, idx) => (
+                {form.items.map((item, idx) => {
+                  const isExternal = item.store_id === EXTERNAL_STORE_ID;
+                  return (
                   <div className="form-row" key={idx}>
                     <div className="form-group">
                       <label>المحل</label>
                       <select value={item.store_id} onChange={e => setItem(idx, 'store_id', e.target.value)}>
                         <option value="">اختر محل</option>
+                        <option value={EXTERNAL_STORE_ID}>طلب خارجي (خدمة — لا تُحسب فاتورة)</option>
                         {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                       </select>
                     </div>
@@ -733,16 +764,30 @@ export default function Orders({ user }) {
                       <input
                         value={item.details}
                         onChange={e => setItem(idx, 'details', e.target.value)}
-                        placeholder="مثال: 2 دجاج + 1 مشروب"
+                        placeholder={isExternal ? 'مثال: توصيل خارجي / خدمة' : 'مثال: 2 دجاج + 1 مشروب'}
                       />
                     </div>
+                    {isExternal && (
+                      <div className="form-group">
+                        <label>مبلغ الخدمة (اختياري)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={item.invoice_amount}
+                          onChange={e => setItem(idx, 'invoice_amount', e.target.value)}
+                          placeholder="يُدخله الكابتن لاحقاً"
+                        />
+                      </div>
+                    )}
                     <div className="form-group flex items-end">
                       {form.items.length > 1 && (
                         <button type="button" className="btn btn-danger btn-sm" onClick={() => removeItemRow(idx)}>حذف</button>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 <button type="button" className="btn btn-secondary btn-sm" onClick={addItemRow}>+ إضافة محل آخر</button>
               </div>
 
