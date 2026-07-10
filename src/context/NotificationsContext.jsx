@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { showDesktopNotification } from '../notifications/desktopNotifications';
 
 const STORAGE_KEY = 'platform_notifications';
 const MAX_NOTIFICATIONS = 50;
@@ -23,7 +24,7 @@ export function NotificationsProvider({ children }) {
     setNotifications(trimmed);
   }, []);
 
-  const pushNotification = useCallback((message, type = 'info') => {
+  const pushNotification = useCallback((message, type = 'info', options = {}) => {
     const item = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       message,
@@ -35,6 +36,12 @@ export function NotificationsProvider({ children }) {
       const next = [item, ...prev].slice(0, MAX_NOTIFICATIONS);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
+    });
+    showDesktopNotification({
+      title: options.title || 'إبهام — منصة إبهام',
+      body: message,
+      tag: options.tag || item.id,
+      onClick: options.onClick,
     });
     return item;
   }, []);

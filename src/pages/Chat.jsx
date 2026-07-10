@@ -47,9 +47,17 @@ function isImageMime(mime) {
   return String(mime || '').startsWith('image/');
 }
 
+function isMessageRead(message, mine) {
+  if (!mine) return false;
+  if (message.sender_type === 'platform') return Boolean(message.read_by_captain_at);
+  if (message.sender_type === 'captain') return Boolean(message.read_by_platform_at);
+  return false;
+}
+
 function ChatMessage({ message, mine }) {
   const hasAttachment = Boolean(message.attachment_path);
   const attachmentUrl = hasAttachment ? mediaUrl(message.attachment_path) : '';
+  const isRead = isMessageRead(message, mine);
 
   return (
     <div className={`chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}`}>
@@ -70,7 +78,14 @@ function ChatMessage({ message, mine }) {
           )}
         </div>
       )}
-      <div className="chat-bubble__time">{formatChatTime(message.created_at)}</div>
+      <div className="chat-bubble__meta">
+        <span className="chat-bubble__time">{formatChatTime(message.created_at)}</span>
+        {mine && (
+          <span className={`chat-bubble__ticks ${isRead ? 'is-read' : ''}`} title={isRead ? 'مقروءة' : 'مرسلة'}>
+            ✓✓
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -103,14 +118,16 @@ export default function Chat({ user }) {
   const loadThreads = async () => {
     const rows = await api.getChatThreads();
     setThreads(rows || []);
-    if (!captainId && rows?.[0]?.id) setCaptainId(rows[0].id);
   };
 
   const loadMessages = async (id) => {
     if (!id) return setMessages([]);
     const rows = await api.getChatMessages(id);
     setMessages(rows || []);
+    await api.markChatRead(id).catch(() => {});
     markCaptainChatSeen(id, rows || []);
+    const refreshed = await api.getChatMessages(id);
+    setMessages(refreshed || []);
   };
 
   useEffect(() => {

@@ -901,6 +901,7 @@ table tr:hover td {
 .orders-tab.is-active {
   background: #2563eb;
   color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
 }
 
 .orders-tab__count {
@@ -932,11 +933,13 @@ table tr:hover td {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .orders-date-btn.is-active {
-  background: #4f46e5;
+  background: #2563eb;
   color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
 }
 
 .orders-last-refresh {
@@ -1050,11 +1053,19 @@ table tr:hover td {
 
 .dark .orders-tab.is-active {
   background: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
 }
 
 .dark .orders-date-btn {
   background: #374151;
   color: #e5e7eb;
+}
+
+.dark .orders-date-btn.is-active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
 }
 
 .dark .orders-timeline {
@@ -1232,9 +1243,33 @@ table tr:hover td {
 }
 
 .finance-filter-period-btn.active {
-  background: #fff4e0;
-  border-color: #ffa626;
-  color: #b45309;
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.dark .finance-filter-period-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
+}
+
+.finance-store-discount-input {
+  width: 88px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.dark .finance-store-discount-input {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
 }
 
 .dark .finance-filter-period-btn {
@@ -2008,13 +2043,39 @@ table tr:hover td {
 .chat-bubble__time {
   font-size: 0.67rem;
   color: #667781;
-  text-align: left;
-  margin-top: 0.25rem;
   font-weight: 500;
+}
+
+.chat-bubble__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.chat-bubble__ticks {
+  font-size: 0.72rem;
+  line-height: 1;
+  color: #94a3b8;
+  letter-spacing: -0.08em;
+  font-weight: 700;
+}
+
+.chat-bubble__ticks.is-read {
+  color: #34b7f1;
 }
 
 .dark .chat-bubble__time {
   color: rgba(233, 237, 239, 0.55);
+}
+
+.dark .chat-bubble__ticks {
+  color: #9ca3af;
+}
+
+.dark .chat-bubble__ticks.is-read {
+  color: #53bdeb;
 }
 
 .chat-composer {

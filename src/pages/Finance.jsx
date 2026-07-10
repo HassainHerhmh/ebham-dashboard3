@@ -233,6 +233,21 @@ export default function Finance() {
     setMsg('تم حذف المحل');
   };
 
+  const handleUpdateStoreDiscount = async (store, value) => {
+    const discount_percent = Math.min(100, Math.max(0, Number(value) || 0));
+    if (Number(store.discount_percent || 0) === discount_percent) return;
+    try {
+      await api.updateFinanceStore(store.id, {
+        name: store.name,
+        discount_percent,
+      });
+      await loadStores();
+      setMsg(`تم تحديث خصم ${store.name}`);
+    } catch (err) {
+      setMsg(err.message);
+    }
+  };
+
   const handleSaveConfig = async () => {
     setMsg('');
     try {
@@ -714,6 +729,7 @@ export default function Finance() {
                 <tr>
                   <th>#</th>
                   <th>اسم المحل</th>
+                  <th>الخصم %</th>
                   <th>إجراءات</th>
                 </tr>
               </thead>
@@ -722,6 +738,17 @@ export default function Finance() {
                   <tr key={s.id}>
                     <td>{i + 1}</td>
                     <td><strong>{s.name}</strong></td>
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="finance-store-discount-input"
+                        defaultValue={Number(s.discount_percent || 0)}
+                        onBlur={(e) => handleUpdateStoreDiscount(s, e.target.value)}
+                      />
+                    </td>
                     <td>
                       <button
                         type="button"

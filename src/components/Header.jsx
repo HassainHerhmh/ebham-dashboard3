@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { api, ROLE_LABELS, mediaUrl } from '../api';
 import { useNotifications } from '../context/NotificationsContext';
 import { hasPermission } from '../utils/permissions';
+import { requestDesktopNotificationPermission } from '../notifications/desktopNotifications';
 
 const CHAT_SEEN_KEY = 'platform_chat_seen_map_v1';
 
@@ -24,12 +25,14 @@ export default function Header({ user, onMenuClick, onLogout }) {
   const [open, setOpen] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
   const panelRef = useRef(null);
+  const lastChatAlertRef = useRef({});
   const {
     notifications,
     unreadCount,
     markAllRead,
     markRead,
     clearNotifications,
+    pushNotification,
   } = useNotifications();
 
   useEffect(() => {
@@ -58,6 +61,10 @@ export default function Header({ user, onMenuClick, onLogout }) {
   const canOpenChat = hasPermission(user, 'chat', 'view');
 
   useEffect(() => {
+    requestDesktopNotificationPermission().catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!canOpenChat) {
       setChatUnread(0);
       return undefined;
@@ -72,40 +79,40 @@ export default function Header({ user, onMenuClick, onLogout }) {
       }
     };
 
-    const writeSeenMap = (next) => {
-      localStorage.setItem(CHAT_SEEN_KEY, JSON.stringify(next));
-    };
-
     const refreshChatUnread = async () => {
       const threads = await api.getChatThreads();
       const list = threads || [];
       const seenMap = readSeenMap();
 
-      if (location.pathname === '/chat') {
-        for (const thread of list) {
-          if (thread?.id && thread?.last_message_at && thread?.last_sender_type === 'captain') {
-            seenMap[thread.id] = String(thread.last_message_at);
-          }
-        }
-        writeSeenMap(seenMap);
-        setChatUnread(0);
-        return;
-      }
-
-      const unread = list.filter((thread) => {
+      const unreadThreads = list.filter((thread) => {
         if (thread?.last_sender_type !== 'captain') return false;
         if (!thread?.last_message_at || !thread?.id) return false;
         const seenAt = seenMap[thread.id];
         if (!seenAt) return true;
         return new Date(thread.last_message_at).getTime() > new Date(seenAt).getTime();
-      }).length;
-      setChatUnread(unread);
+      });
+
+      for (const thread of unreadThreads) {
+        const alertKey = `${thread.id}:${thread.last_message_at}`;
+        if (lastChatAlertRef.current[thread.id] === alertKey) continue;
+        lastChatAlertRef.current[thread.id] = alertKey;
+
+        const preview = thread.last_message || (thread.last_attachment_name ? `مرفق: ${thread.last_attachment_name}` : 'رسالة جديدة');
+        const message = `رسالة جديدة من ${thread.name}: ${preview}`;
+        pushNotification(message, 'info', {
+          title: 'دردشة جديدة — إبهام',
+          tag: `chat-${thread.id}`,
+          onClick: () => navigate('/chat'),
+        });
+      }
+
+      setChatUnread(unreadThreads.length);
     };
 
     refreshChatUnread().catch(() => {});
     const timer = setInterval(() => refreshChatUnread().catch(() => {}), 5000);
     return () => clearInterval(timer);
-  }, [canOpenChat, location.pathname]);
+  }, [canOpenChat, location.pathname, navigate, pushNotification]);
 
   return (
     <header className="app-header px-4 md:px-6 py-4 flex items-center justify-between transition-colors duration-300">

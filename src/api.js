@@ -136,10 +136,15 @@ export const api = {
     body: JSON.stringify(data),
   }),
   getFinanceStores: () => request('/finance/stores'),
-  createFinanceStore: (name) => request('/finance/stores', {
+  createFinanceStore: (name, discount_percent = 0) => request('/finance/stores', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, discount_percent }),
+  }),
+  updateFinanceStore: (id, payload) => request(`/finance/stores/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   }),
   deleteFinanceStore: (id) => request(`/finance/stores/${id}`, { method: 'DELETE' }),
   getCaptainFinance: (captainId, { salesDate, period, date } = {}) => {
@@ -246,6 +251,7 @@ export const api = {
   getOrderInvoices: (orderId) => request(`/orders/${orderId}/invoices`),
   getChatThreads: () => request('/chat/threads'),
   getChatMessages: (captainId) => request(`/chat/${captainId}`),
+  markChatRead: (captainId) => request(`/chat/${captainId}/read`, { method: 'POST' }),
   sendChatMessage: async (captainId, { message, sender_id, sender_name, file } = {}) => {
     const form = new FormData();
     if (message) form.append('message', message);
