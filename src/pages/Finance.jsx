@@ -240,7 +240,7 @@ export default function Finance() {
     const prevDate = store.discount_from_date || '';
     if (prevPercent === discount_percent && prevDate === discount_from_date) return;
     if (discount_percent > 0 && !discount_from_date) {
-      setMsg('يرجى تحديد تاريخ بدء الخصم');
+      setMsg('يرجى تحديد تاريخ الخصم');
       return;
     }
     try {
@@ -745,7 +745,7 @@ export default function Finance() {
                   <th>#</th>
                   <th>اسم المحل</th>
                   <th>الخصم %</th>
-                  <th>تاريخ بدء الخصم</th>
+                  <th>تاريخ الخصم</th>
                   <th>إجراءات</th>
                 </tr>
               </thead>
@@ -772,7 +772,7 @@ export default function Finance() {
                         data-discount-date
                         className="finance-store-discount-date-input"
                         defaultValue={s.discount_from_date || ''}
-                        title={Number(s.discount_percent || 0) > 0 ? 'الخصم يطبق على فواتير هذا التاريخ فما بعد' : 'حدد تاريخاً عند تفعيل الخصم'}
+                        title={Number(s.discount_percent || 0) > 0 ? 'الخصم يطبق على فواتير هذا اليوم فقط' : 'حدد يوماً عند تفعيل الخصم'}
                         onBlur={(e) => handleStoreDiscountRowBlur(s, e.target.closest('tr'))}
                       />
                     </td>
