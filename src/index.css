@@ -1726,6 +1726,98 @@ table tr:hover td {
   overflow-x: auto;
 }
 
+.report-store-row.is-expanded {
+  background: #f8fafc;
+}
+
+.dark .report-store-row.is-expanded {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.report-store-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+.report-store-toggle__chevron {
+  flex-shrink: 0;
+  color: #64748b;
+  transition: transform .2s ease;
+}
+
+.report-store-toggle__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.report-store-detail-row td {
+  padding: 0 0.75rem 0.85rem;
+  border-top: none;
+}
+
+.report-store-invoices {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.dark .report-store-invoices {
+  background: #111827;
+  border-color: #374151;
+}
+
+.report-store-invoices__title {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dark .report-store-invoices__title {
+  color: #cbd5e1;
+  border-color: #374151;
+}
+
+.report-store-invoices__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.report-store-invoices__table th,
+.report-store-invoices__table td {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.84rem;
+  text-align: right;
+}
+
+.report-store-invoices__table thead th {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.dark .report-store-invoices__table thead th {
+  background: #1f2937;
+  color: #94a3b8;
+}
+
+.report-store-invoices__table tbody tr + tr td {
+  border-top: 1px solid #f1f5f9;
+}
+
+.dark .report-store-invoices__table tbody tr + tr td {
+  border-top-color: #374151;
+}
+
 .attendance-matrix-table th,
 .attendance-matrix-table td {
   text-align: center;

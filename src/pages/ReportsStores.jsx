@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { api } from '../api';
 import { PERIOD_LABELS, todayKey, getFilterRange, formatFilterHint, formatMoney, formatDateKey } from './reportsShared';
+
+function entryLabel(entry) {
+  if (entry.order_number) return `طلب #${entry.order_number}`;
+  return 'فاتورة يدوية';
+}
 
 export default function ReportsStores() {
   const [period, setPeriod] = useState('month');
@@ -9,10 +15,12 @@ export default function ReportsStores() {
   const [toDate, setToDate] = useState(todayKey());
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [expandedStores, setExpandedStores] = useState(() => new Set());
   const range = getFilterRange(period, date, fromDate, toDate);
 
   useEffect(() => {
     setLoading(true);
+    setExpandedStores(new Set());
     api.getStoresReport({
       period,
       date,
@@ -22,6 +30,15 @@ export default function ReportsStores() {
       .then(setReport)
       .finally(() => setLoading(false));
   }, [period, date, fromDate, toDate]);
+
+  const toggleStore = (storeId) => {
+    setExpandedStores((prev) => {
+      const next = new Set(prev);
+      if (next.has(storeId)) next.delete(storeId);
+      else next.add(storeId);
+      return next;
+    });
+  };
 
   return (
     <>
@@ -83,14 +100,67 @@ export default function ReportsStores() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.stores.map(store => (
-                    <tr key={store.store_id}>
-                      <td>{store.store_name}</td>
-                      <td>{formatMoney(store.total_sales)} ر.ي</td>
-                      <td>{store.captains_count}</td>
-                      <td>{store.entries_count}</td>
-                    </tr>
-                  ))}
+                  {report.stores.map(store => {
+                    const expanded = expandedStores.has(store.store_id);
+                    return (
+                      <Fragment key={store.store_id}>
+                        <tr className={`report-store-row${expanded ? ' is-expanded' : ''}`}>
+                          <td>
+                            <button
+                              type="button"
+                              className="report-store-toggle"
+                              onClick={() => toggleStore(store.store_id)}
+                              aria-expanded={expanded}
+                            >
+                              <ChevronDown
+                                className={`report-store-toggle__chevron${expanded ? ' is-open' : ''}`}
+                                size={18}
+                                aria-hidden
+                              />
+                              <span>{store.store_name}</span>
+                            </button>
+                          </td>
+                          <td>{formatMoney(store.total_sales)} ر.ي</td>
+                          <td>{store.captains_count}</td>
+                          <td>{store.entries_count}</td>
+                        </tr>
+                        {expanded && (
+                          <tr className="report-store-detail-row report-print-hidden">
+                            <td colSpan={4}>
+                              <div className="report-store-invoices">
+                                <div className="report-store-invoices__title">
+                                  فواتير {store.store_name} ({store.entries_count})
+                                </div>
+                                <table className="report-store-invoices__table">
+                                  <thead>
+                                    <tr>
+                                      <th>التاريخ</th>
+                                      <th>الكابتن</th>
+                                      <th>الفاتورة</th>
+                                      <th>المبلغ</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {store.entries.map(entry => (
+                                      <tr key={entry.id || `${entry.sales_date}-${entry.captain_id}-${entry.amount}`}>
+                                        <td>{formatDateKey(entry.sales_date)}</td>
+                                        <td>
+                                          {entry.captain_name}
+                                          {entry.captain_number ? ` (${entry.captain_number})` : ''}
+                                        </td>
+                                        <td>{entryLabel(entry)}</td>
+                                        <td>{formatMoney(entry.amount)} ر.ي</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
