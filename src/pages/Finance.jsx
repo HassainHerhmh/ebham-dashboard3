@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../api';
 
 const TABS = [
@@ -111,6 +111,7 @@ export default function Finance() {
   const [modalInvoiceCaptainId, setModalInvoiceCaptainId] = useState('');
   const [modalInvoiceSalesDate, setModalInvoiceSalesDate] = useState(todayKey);
   const [modalInvoiceForm, setModalInvoiceForm] = useState({ transfers_debts: 0, orders_count: 0, invoices: {} });
+  const [modalInvoiceLines, setModalInvoiceLines] = useState([]);
   const [modalInvoiceLoading, setModalInvoiceLoading] = useState(false);
   const [filterPeriod, setFilterPeriod] = useState('month');
   const [filterDate, setFilterDate] = useState(todayKey);
@@ -129,8 +130,9 @@ export default function Finance() {
   const fillModalInvoiceForm = (data) => {
     const invMap = emptyInvoices();
     for (const inv of data?.invoices || []) {
-      invMap[inv.store_id] = inv.amount;
+      if (!inv.order_id) invMap[inv.store_id] = inv.amount;
     }
+    setModalInvoiceLines(data?.invoices || []);
     setModalInvoiceForm({
       transfers_debts: data?.transfers_debts ?? 0,
       orders_count: data?.orders_count ?? 0,
@@ -146,6 +148,7 @@ export default function Finance() {
       fillModalInvoiceForm(data);
     } catch {
       setModalInvoiceForm({ transfers_debts: 0, orders_count: 0, invoices: emptyInvoices() });
+      setModalInvoiceLines([]);
     } finally {
       setModalInvoiceLoading(false);
     }
@@ -602,10 +605,21 @@ export default function Finance() {
     }
   };
 
-  const modalInvoiceTotal = stores.reduce(
-    (sum, s) => sum + (Number(modalInvoiceForm.invoices[s.id]) || 0),
-    0
-  );
+  const groupedOrderInvoices = useMemo(() => {
+    const map = new Map();
+    for (const inv of modalInvoiceLines) {
+      if (!inv.order_id) continue;
+      const entry = map.get(inv.store_id) || { store_name: inv.store_name, lines: [] };
+      entry.lines.push(inv);
+      map.set(inv.store_id, entry);
+    }
+    return map;
+  }, [modalInvoiceLines]);
+
+  const modalInvoiceTotal = modalInvoiceLines
+    .filter((inv) => inv.order_id)
+    .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0)
+    + stores.reduce((sum, s) => sum + (Number(modalInvoiceForm.invoices[s.id]) || 0), 0);
   const modalCommissionPreview = (() => {
     const totalCommission = Number(modalCommissionForm.total_commission) || 0;
     const rent = Number(modalCommissionForm.rent) || 0;
@@ -1232,21 +1246,44 @@ export default function Finance() {
                 <>
                   <div className="finance-admin-section mt-2">
                     <h4 className="font-bold mb-3">تفاصيل الفواتير حسب المحل</h4>
-                    <div className="finance-invoice-grid">
-                      {stores.map(s => (
-                        <label key={s.id} className="finance-invoice-row">
-                          <span>{s.name}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            placeholder="0"
-                            value={modalInvoiceForm.invoices[s.id] ?? ''}
-                            onChange={e => updateModalInvoice(s.id, e.target.value)}
-                          />
-                        </label>
-                      ))}
-                    </div>
+                    {stores.length === 0 ? (
+                      <div className="empty-state">لا توجد محلات</div>
+                    ) : (
+                      <div className="finance-store-invoice-groups">
+                        {stores.map((s) => {
+                          const orderGroup = groupedOrderInvoices.get(s.id);
+                          const manualLine = modalInvoiceLines.find((inv) => inv.store_id === s.id && !inv.order_id);
+                          return (
+                            <div className="finance-store-invoice-group" key={s.id}>
+                              <div className="finance-store-invoice-group__title">{s.name}</div>
+                              {(orderGroup?.lines || []).length > 0 ? (
+                                <div className="finance-store-invoice-lines">
+                                  {orderGroup.lines.map((inv) => (
+                                    <div className="finance-store-invoice-line" key={inv.id || `${inv.order_id}-${inv.store_id}`}>
+                                      <span>طلب #{inv.order_number || '—'}</span>
+                                      <strong>{formatMoney(inv.amount)} ر.ي</strong>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="finance-store-invoice-empty">لا توجد فواتير مرحّلة من الطلبات</div>
+                              )}
+                              <label className="finance-invoice-row finance-invoice-row--manual">
+                                <span>فاتورة يدوية إضافية</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  placeholder="0"
+                                  value={manualLine ? manualLine.amount : (modalInvoiceForm.invoices[s.id] ?? '')}
+                                  onChange={(e) => updateModalInvoice(s.id, e.target.value)}
+                                />
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     <p className="finance-total-line">
                       إجمالي الفواتير: <strong>{formatMoney(modalInvoiceTotal)} ر.ي</strong>
                     </p>
