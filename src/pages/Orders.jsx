@@ -247,6 +247,7 @@ export default function Orders({ user }) {
   const fieldSnapshot = useRef({});
   const savingIdRef = useRef(null);
   const ordersSnapshotRef = useRef(new Map());
+  const customerSearchTimer = useRef(null);
   const { pushNotification } = useNotifications();
   const [form, setForm] = useState({
     customer_name: '',
@@ -442,6 +443,18 @@ export default function Orders({ user }) {
       address_text: row.address_text || prev.address_text,
       map_link: row.map_link || prev.map_link,
     }));
+  };
+
+  const searchCustomers = (term) => {
+    clearTimeout(customerSearchTimer.current);
+    customerSearchTimer.current = setTimeout(async () => {
+      try {
+        const rows = await api.listOrderCustomers(String(term || '').trim());
+        setCustomers(rows || []);
+      } catch {
+        // ignore search errors
+      }
+    }, 250);
   };
 
   const setItem = (idx, field, value) => {
@@ -827,12 +840,20 @@ export default function Orders({ user }) {
                   <input
                     list="customers-list"
                     value={form.customer_name}
-                    onChange={e => setForm({ ...form, customer_name: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setForm({ ...form, customer_name: value });
+                      searchCustomers(value);
+                    }}
                     onBlur={e => applySavedCustomer(e.target.value)}
                     required
                   />
                   <datalist id="customers-list">
-                    {customers.map(c => <option key={c.id} value={c.name} />)}
+                    {customers.map(c => (
+                      <option key={c.id} value={c.name}>
+                        {[c.phone, c.address_text].filter(Boolean).join(' — ')}
+                      </option>
+                    ))}
                   </datalist>
                 </div>
                 <div className="form-group">
