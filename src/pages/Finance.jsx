@@ -233,19 +233,34 @@ export default function Finance() {
     setMsg('تم حذف المحل');
   };
 
-  const handleUpdateStoreDiscount = async (store, value) => {
-    const discount_percent = Math.min(100, Math.max(0, Number(value) || 0));
-    if (Number(store.discount_percent || 0) === discount_percent) return;
+  const handleUpdateStoreDiscount = async (store, discountPercent, discountFromDate) => {
+    const discount_percent = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+    const discount_from_date = discountFromDate ? String(discountFromDate).slice(0, 10) : '';
+    const prevPercent = Number(store.discount_percent || 0);
+    const prevDate = store.discount_from_date || '';
+    if (prevPercent === discount_percent && prevDate === discount_from_date) return;
+    if (discount_percent > 0 && !discount_from_date) {
+      setMsg('يرجى تحديد تاريخ بدء الخصم');
+      return;
+    }
     try {
       await api.updateFinanceStore(store.id, {
         name: store.name,
         discount_percent,
+        discount_from_date: discount_percent > 0 ? discount_from_date : null,
       });
       await loadStores();
       setMsg(`تم تحديث خصم ${store.name}`);
     } catch (err) {
       setMsg(err.message);
     }
+  };
+
+  const handleStoreDiscountRowBlur = (store, rowEl) => {
+    if (!rowEl) return;
+    const percent = rowEl.querySelector('[data-discount-percent]')?.value;
+    const date = rowEl.querySelector('[data-discount-date]')?.value;
+    handleUpdateStoreDiscount(store, percent, date);
   };
 
   const handleSaveConfig = async () => {
@@ -730,6 +745,7 @@ export default function Finance() {
                   <th>#</th>
                   <th>اسم المحل</th>
                   <th>الخصم %</th>
+                  <th>تاريخ بدء الخصم</th>
                   <th>إجراءات</th>
                 </tr>
               </thead>
@@ -744,9 +760,20 @@ export default function Finance() {
                         min="0"
                         max="100"
                         step="0.1"
+                        data-discount-percent
                         className="finance-store-discount-input"
                         defaultValue={Number(s.discount_percent || 0)}
-                        onBlur={(e) => handleUpdateStoreDiscount(s, e.target.value)}
+                        onBlur={(e) => handleStoreDiscountRowBlur(s, e.target.closest('tr'))}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="date"
+                        data-discount-date
+                        className="finance-store-discount-date-input"
+                        defaultValue={s.discount_from_date || ''}
+                        title={Number(s.discount_percent || 0) > 0 ? 'الخصم يطبق على فواتير هذا التاريخ فما بعد' : 'حدد تاريخاً عند تفعيل الخصم'}
+                        onBlur={(e) => handleStoreDiscountRowBlur(s, e.target.closest('tr'))}
                       />
                     </td>
                     <td>

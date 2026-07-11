@@ -128,6 +128,7 @@ export default function Chat({ user }) {
     markCaptainChatSeen(id, rows || []);
     const refreshed = await api.getChatMessages(id);
     setMessages(refreshed || []);
+    await loadThreads();
   };
 
   useEffect(() => {
@@ -186,11 +187,14 @@ export default function Chat({ user }) {
           {filteredThreads.length === 0 ? (
             <div className="chat-sidebar__empty">لا يوجد كباتن</div>
           ) : (
-            filteredThreads.map((c) => (
+            filteredThreads.map((c) => {
+              const unreadCount = Number(c.unread_count) || 0;
+              const showBadge = unreadCount > 0 && captainId !== c.id;
+              return (
               <button
                 key={c.id}
                 type="button"
-                className={`chat-thread ${captainId === c.id ? 'chat-thread--active' : ''}`}
+                className={`chat-thread ${captainId === c.id ? 'chat-thread--active' : ''} ${showBadge ? 'chat-thread--unread' : ''}`}
                 onClick={() => setCaptainId(c.id)}
               >
                 <div className="chat-thread__avatar">
@@ -203,12 +207,20 @@ export default function Chat({ user }) {
                 <div className="chat-thread__body">
                   <div className="chat-thread__top">
                     <strong>{c.name}</strong>
-                    <span>{formatChatTime(c.last_message_at)}</span>
+                    <span className="chat-thread__meta">
+                      {showBadge && (
+                        <span className="chat-thread__badge">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                      <span className="chat-thread__time">{formatChatTime(c.last_message_at)}</span>
+                    </span>
                   </div>
                   <div className="chat-thread__preview">{threadPreview(c)}</div>
                 </div>
               </button>
-            ))
+            );
+            })
           )}
         </div>
       </aside>

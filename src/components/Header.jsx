@@ -6,8 +6,6 @@ import { useNotifications } from '../context/NotificationsContext';
 import { hasPermission } from '../utils/permissions';
 import { requestDesktopNotificationPermission } from '../notifications/desktopNotifications';
 
-const CHAT_SEEN_KEY = 'platform_chat_seen_map_v1';
-
 function formatNotificationTime(value) {
   try {
     return new Date(value).toLocaleString('ar-YE', { dateStyle: 'short', timeStyle: 'short' });
@@ -70,27 +68,11 @@ export default function Header({ user, onMenuClick, onLogout }) {
       return undefined;
     }
 
-    const readSeenMap = () => {
-      try {
-        const raw = JSON.parse(localStorage.getItem(CHAT_SEEN_KEY) || '{}');
-        return raw && typeof raw === 'object' ? raw : {};
-      } catch {
-        return {};
-      }
-    };
-
     const refreshChatUnread = async () => {
       const threads = await api.getChatThreads();
       const list = threads || [];
-      const seenMap = readSeenMap();
 
-      const unreadThreads = list.filter((thread) => {
-        if (thread?.last_sender_type !== 'captain') return false;
-        if (!thread?.last_message_at || !thread?.id) return false;
-        const seenAt = seenMap[thread.id];
-        if (!seenAt) return true;
-        return new Date(thread.last_message_at).getTime() > new Date(seenAt).getTime();
-      });
+      const unreadThreads = list.filter((thread) => Number(thread.unread_count) > 0);
 
       for (const thread of unreadThreads) {
         const alertKey = `${thread.id}:${thread.last_message_at}`;

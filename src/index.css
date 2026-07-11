@@ -1272,6 +1272,22 @@ table tr:hover td {
   color: #f9fafb;
 }
 
+.finance-store-discount-date-input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  background: #fff;
+}
+
+.dark .finance-store-discount-date-input {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
+  color-scheme: dark;
+}
+
 .dark .finance-filter-period-btn {
   background: #1f2937;
   border-color: #374151;
@@ -1891,6 +1907,39 @@ table tr:hover td {
 .chat-thread__top span {
   color: #94a3b8;
   white-space: nowrap;
+}
+
+.chat-thread__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.chat-thread__badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.chat-thread--unread .chat-thread__top strong,
+.chat-thread--unread .chat-thread__preview {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dark .chat-thread--unread .chat-thread__top strong,
+.dark .chat-thread--unread .chat-thread__preview {
+  color: #f8fafc;
 }
 
 .chat-thread__preview {
