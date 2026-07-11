@@ -129,10 +129,27 @@ export default function Finance() {
 
   const fillModalInvoiceForm = (data) => {
     const invMap = emptyInvoices();
-    for (const inv of data?.invoices || []) {
-      if (!inv.order_id) invMap[inv.store_id] = inv.amount;
+    const lines = data?.invoices || [];
+    const orderSumByStore = new Map();
+    for (const inv of lines) {
+      if (!inv.order_id) continue;
+      orderSumByStore.set(
+        inv.store_id,
+        (orderSumByStore.get(inv.store_id) || 0) + (Number(inv.amount) || 0)
+      );
     }
-    setModalInvoiceLines(data?.invoices || []);
+    for (const inv of lines) {
+      if (inv.order_id) continue;
+      const orderSum = orderSumByStore.get(inv.store_id) || 0;
+      const manualAmount = Number(inv.amount) || 0;
+      if (orderSum > 0) {
+        const extra = manualAmount - orderSum;
+        if (extra > 0.01) invMap[inv.store_id] = extra;
+      } else if (manualAmount > 0) {
+        invMap[inv.store_id] = manualAmount;
+      }
+    }
+    setModalInvoiceLines(lines);
     setModalInvoiceForm({
       transfers_debts: data?.transfers_debts ?? 0,
       orders_count: data?.orders_count ?? 0,
@@ -1252,11 +1269,11 @@ export default function Finance() {
                       <div className="finance-store-invoice-groups">
                         {stores.map((s) => {
                           const orderGroup = groupedOrderInvoices.get(s.id);
-                          const manualLine = modalInvoiceLines.find((inv) => inv.store_id === s.id && !inv.order_id);
+                          const hasOrderLines = (orderGroup?.lines || []).length > 0;
                           return (
                             <div className="finance-store-invoice-group" key={s.id}>
                               <div className="finance-store-invoice-group__title">{s.name}</div>
-                              {(orderGroup?.lines || []).length > 0 ? (
+                              {hasOrderLines ? (
                                 <div className="finance-store-invoice-lines">
                                   {orderGroup.lines.map((inv) => (
                                     <div className="finance-store-invoice-line" key={inv.id || `${inv.order_id}-${inv.store_id}`}>
@@ -1269,13 +1286,13 @@ export default function Finance() {
                                 <div className="finance-store-invoice-empty">لا توجد فواتير مرحّلة من الطلبات</div>
                               )}
                               <label className="finance-invoice-row finance-invoice-row--manual">
-                                <span>فاتورة يدوية إضافية</span>
+                                <span>{hasOrderLines ? 'فاتورة يدوية إضافية' : 'فاتورة يدوية'}</span>
                                 <input
                                   type="number"
                                   min="0"
                                   step="1"
                                   placeholder="0"
-                                  value={manualLine ? manualLine.amount : (modalInvoiceForm.invoices[s.id] ?? '')}
+                                  value={modalInvoiceForm.invoices[s.id] ?? ''}
                                   onChange={(e) => updateModalInvoice(s.id, e.target.value)}
                                 />
                               </label>
