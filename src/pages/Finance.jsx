@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Plus, X } from 'lucide-react';
 import { api } from '../api';
 
 const TABS = [
@@ -125,29 +126,26 @@ export default function Finance() {
   const loadCommissionPostings = () => api.getCommissionPostings().then(setCommissionPostings).catch(() => setCommissionPostings([]));
   const loadCaptains = () => api.getCaptains().then(setCaptains);
 
-  const emptyInvoices = () => Object.fromEntries(stores.map(s => [s.id, '']));
+  const emptyInvoices = () => Object.fromEntries(stores.map(s => [s.id, ['']]));
+
+  const getManualInvoiceAmounts = (invoicesMap, storeId) => {
+    const value = invoicesMap?.[storeId];
+    if (Array.isArray(value)) return value.length ? value : [''];
+    if (value === '' || value == null) return [''];
+    return [String(value)];
+  };
 
   const fillModalInvoiceForm = (data) => {
     const invMap = emptyInvoices();
     const lines = data?.invoices || [];
-    const orderSumByStore = new Map();
-    for (const inv of lines) {
-      if (!inv.order_id) continue;
-      orderSumByStore.set(
-        inv.store_id,
-        (orderSumByStore.get(inv.store_id) || 0) + (Number(inv.amount) || 0)
-      );
-    }
     for (const inv of lines) {
       if (inv.order_id) continue;
-      const orderSum = orderSumByStore.get(inv.store_id) || 0;
-      const manualAmount = Number(inv.amount) || 0;
-      if (orderSum > 0) {
-        const extra = manualAmount - orderSum;
-        if (extra > 0.01) invMap[inv.store_id] = extra;
-      } else if (manualAmount > 0) {
-        invMap[inv.store_id] = manualAmount;
-      }
+      const amount = Number(inv.amount) || 0;
+      if (amount <= 0) continue;
+      const current = getManualInvoiceAmounts(invMap, inv.store_id);
+      const next = current.length === 1 && current[0] === '' ? [] : [...current];
+      next.push(String(amount));
+      invMap[inv.store_id] = next.length ? next : [''];
     }
     setModalInvoiceLines(lines);
     setModalInvoiceForm({
@@ -264,12 +262,16 @@ export default function Finance() {
     }
   };
 
-  const buildInvoicesPayload = (invoicesMap) => stores
-    .map(s => ({
-      store_id: s.id,
-      amount: Number(invoicesMap[s.id]) || 0,
-    }))
-    .filter(i => i.amount > 0);
+  const buildInvoicesPayload = (invoicesMap) => {
+    const payload = [];
+    for (const store of stores) {
+      for (const raw of getManualInvoiceAmounts(invoicesMap, store.id)) {
+        const amount = Number(raw) || 0;
+        if (amount > 0) payload.push({ store_id: store.id, amount });
+      }
+    }
+    return payload;
+  };
 
   const handleSaveInvoices = async (e) => {
     e?.preventDefault();
@@ -410,11 +412,35 @@ export default function Finance() {
     }
   };
 
-  const updateModalInvoice = (storeId, value) => {
-    setModalInvoiceForm(prev => ({
+  const updateManualInvoice = (storeId, index, value) => {
+    setModalInvoiceForm((prev) => {
+      const amounts = [...getManualInvoiceAmounts(prev.invoices, storeId)];
+      amounts[index] = value;
+      return {
+        ...prev,
+        invoices: { ...prev.invoices, [storeId]: amounts },
+      };
+    });
+  };
+
+  const addManualInvoiceRow = (storeId) => {
+    setModalInvoiceForm((prev) => ({
       ...prev,
-      invoices: { ...prev.invoices, [storeId]: value },
+      invoices: {
+        ...prev.invoices,
+        [storeId]: [...getManualInvoiceAmounts(prev.invoices, storeId), ''],
+      },
     }));
+  };
+
+  const removeManualInvoiceRow = (storeId, index) => {
+    setModalInvoiceForm((prev) => {
+      const amounts = getManualInvoiceAmounts(prev.invoices, storeId).filter((_, i) => i !== index);
+      return {
+        ...prev,
+        invoices: { ...prev.invoices, [storeId]: amounts.length ? amounts : [''] },
+      };
+    });
   };
 
   const handleModalCaptainChange = (id) => {
@@ -606,7 +632,10 @@ export default function Finance() {
   const modalInvoiceTotal = modalInvoiceLines
     .filter((inv) => inv.order_id)
     .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0)
-    + stores.reduce((sum, s) => sum + (Number(modalInvoiceForm.invoices[s.id]) || 0), 0);
+    + stores.reduce((sum, s) => (
+      sum + getManualInvoiceAmounts(modalInvoiceForm.invoices, s.id)
+        .reduce((rowSum, value) => rowSum + (Number(value) || 0), 0)
+    ), 0);
   const modalCommissionPreview = (() => {
     const totalCommission = Number(modalCommissionForm.total_commission) || 0;
     const rent = Number(modalCommissionForm.rent) || 0;
@@ -1231,17 +1260,51 @@ export default function Finance() {
                               ) : (
                                 <div className="finance-store-invoice-empty">لا توجد فواتير مرحّلة من الطلبات</div>
                               )}
-                              <label className="finance-invoice-row finance-invoice-row--manual">
-                                <span>{hasOrderLines ? 'فاتورة يدوية إضافية' : 'فاتورة يدوية'}</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  placeholder="0"
-                                  value={modalInvoiceForm.invoices[s.id] ?? ''}
-                                  onChange={(e) => updateModalInvoice(s.id, e.target.value)}
-                                />
-                              </label>
+                              <div className="finance-manual-invoices">
+                                {getManualInvoiceAmounts(modalInvoiceForm.invoices, s.id).map((amount, index, rows) => (
+                                  <div
+                                    className="finance-invoice-row finance-invoice-row--manual"
+                                    key={`${s.id}-manual-${index}`}
+                                  >
+                                    <span>
+                                      {index === 0
+                                        ? (hasOrderLines ? 'فاتورة يدوية إضافية' : 'فاتورة يدوية')
+                                        : `فاتورة يدوية ${index + 1}`}
+                                    </span>
+                                    <div className="finance-manual-invoice-inputs">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        placeholder="0"
+                                        value={amount}
+                                        onChange={(e) => updateManualInvoice(s.id, index, e.target.value)}
+                                      />
+                                      {index === rows.length - 1 ? (
+                                        <button
+                                          type="button"
+                                          className="finance-manual-invoice-btn finance-manual-invoice-btn--add"
+                                          onClick={() => addManualInvoiceRow(s.id)}
+                                          title="إضافة فاتورة يدوية"
+                                          aria-label="إضافة فاتورة يدوية"
+                                        >
+                                          <Plus size={16} />
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className="finance-manual-invoice-btn finance-manual-invoice-btn--remove"
+                                          onClick={() => removeManualInvoiceRow(s.id, index)}
+                                          title="حذف الفاتورة"
+                                          aria-label="حذف الفاتورة"
+                                        >
+                                          <X size={16} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           );
                         })}

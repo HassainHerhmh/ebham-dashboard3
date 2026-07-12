@@ -1402,6 +1402,61 @@ table tr:hover td {
   padding-top: 0.65rem;
 }
 
+.finance-manual-invoices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.finance-manual-invoice-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.finance-manual-invoice-inputs input {
+  flex: 1;
+  min-width: 0;
+}
+
+.finance-manual-invoice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.finance-manual-invoice-btn:hover {
+  background: #f1f5f9;
+}
+
+.finance-manual-invoice-btn--add {
+  color: #2563eb;
+  border-color: #93c5fd;
+}
+
+.finance-manual-invoice-btn--remove {
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.dark .finance-manual-invoice-btn {
+  background: #1f2937;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+.dark .finance-manual-invoice-btn:hover {
+  background: #374151;
+}
+
 .finance-store-invoice-groups {
   display: flex;
   flex-direction: column;
@@ -1457,7 +1512,7 @@ table tr:hover td {
 
 .finance-invoice-row {
   display: grid;
-  grid-template-columns: 1fr 140px;
+  grid-template-columns: 1fr minmax(160px, 180px);
   align-items: center;
   gap: 0.75rem;
   font-size: 0.9rem;
