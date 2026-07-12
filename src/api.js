@@ -171,6 +171,18 @@ export const api = {
     body: JSON.stringify(payload),
   }),
   deleteFinanceStore: (id) => request(`/finance/stores/${id}`, { method: 'DELETE' }),
+  getFinanceDiscounts: () => request('/finance/discounts'),
+  createFinanceDiscount: (data) => request('/finance/discounts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
+  updateFinanceDiscount: (id, data) => request(`/finance/discounts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
+  deleteFinanceDiscount: (id) => request(`/finance/discounts/${id}`, { method: 'DELETE' }),
   getCaptainFinance: (captainId, { salesDate, period, date } = {}) => {
     const params = new URLSearchParams();
     if (salesDate) params.set('sales_date', salesDate);

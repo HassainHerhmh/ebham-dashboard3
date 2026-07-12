@@ -38,6 +38,7 @@ export const permissionGroups = [
     label: 'الماليات',
     children: [
       { key: 'finance', label: 'الماليات', path: '/finance' },
+      { key: 'discounts', label: 'إعداد الخصومات', path: '/discounts' },
     ],
   },
   {

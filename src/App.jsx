@@ -13,6 +13,7 @@ import Messages from './pages/Messages';
 import Chat from './pages/Chat';
 import Attendance from './pages/Attendance';
 import Finance from './pages/Finance';
+import Discounts from './pages/Discounts';
 import Orders from './pages/Orders';
 import ReportsAttendance from './pages/ReportsAttendance';
 import ReportsSales from './pages/ReportsSales';
@@ -89,6 +90,7 @@ export default function App() {
                 <Route path="/chat" element={<ProtectedRoute user={user} section="chat"><Chat user={user} /></ProtectedRoute>} />
                 <Route path="/attendance" element={<ProtectedRoute user={user} section="reports_attendance"><Attendance /></ProtectedRoute>} />
                 <Route path="/finance" element={<ProtectedRoute user={user} section="finance"><Finance /></ProtectedRoute>} />
+                <Route path="/discounts" element={<ProtectedRoute user={user} section="discounts"><Discounts /></ProtectedRoute>} />
                 <Route path="/orders" element={<ProtectedRoute user={user} section="orders"><Orders user={user} /></ProtectedRoute>} />
                 <Route path="/reports/attendance" element={<ProtectedRoute user={user} section="reports_attendance"><ReportsAttendance /></ProtectedRoute>} />
                 <Route path="/reports/sales" element={<ProtectedRoute user={user} section="reports_sales"><ReportsSales /></ProtectedRoute>} />

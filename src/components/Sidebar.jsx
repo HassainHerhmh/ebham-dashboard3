@@ -12,6 +12,7 @@ import {
   Wallet,
   ShoppingCart,
   BarChart3,
+  Percent,
   FileText,
   ChevronDown,
   PanelRightClose,
@@ -27,6 +28,7 @@ const MENU = [
   { path: '/messages', label: 'الرسائل', icon: MessageSquare, section: 'messages' },
   { path: '/chat', label: 'الدردشة', icon: MessageCircle, section: 'chat' },
   { path: '/finance', label: 'الماليات', icon: Wallet, section: 'finance' },
+  { path: '/discounts', label: 'إعداد الخصومات', icon: Percent, section: 'discounts' },
   { path: '/orders', label: 'الطلبات', icon: ShoppingCart, section: 'orders' },
 ];
 
