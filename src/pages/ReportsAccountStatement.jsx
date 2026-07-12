@@ -7,7 +7,7 @@ const REF_LABELS = {
   order: 'فاتورة طلب',
   credit: 'آجل',
   transfer: 'حوالة',
-  invoice_posting: 'ترحيل فواتير',
+  invoice_posting: 'فاتورة',
   company_commission: 'عمولة الشركة',
   rent: 'إيجار',
   receipt: 'سند قبض',
@@ -33,12 +33,15 @@ function balanceClass(balance) {
 }
 
 export default function ReportsAccountStatement() {
+  const [entityType, setEntityType] = useState('captain');
   const [captains, setCaptains] = useState([]);
+  const [stores, setStores] = useState([]);
   const [period, setPeriod] = useState('day');
   const [date, setDate] = useState(todayKey());
   const [fromDate, setFromDate] = useState(todayKey());
   const [toDate, setToDate] = useState(todayKey());
   const [captainId, setCaptainId] = useState('');
+  const [storeId, setStoreId] = useState('');
   const [mode, setMode] = useState('detailed');
   const [includeOpening, setIncludeOpening] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,13 +50,24 @@ export default function ReportsAccountStatement() {
   const [error, setError] = useState('');
 
   const range = getFilterRange(period, date, fromDate, toDate);
+  const isStore = entityType === 'store';
+  const selectedId = isStore ? storeId : captainId;
 
   useEffect(() => {
     api.getCaptains().then(setCaptains);
+    api.getFinanceStores().then(setStores);
   }, []);
 
   useEffect(() => {
-    if (!captainId) {
+    setCaptainId('');
+    setStoreId('');
+    setReport(null);
+    setError('');
+    setSearch('');
+  }, [entityType]);
+
+  useEffect(() => {
+    if (!selectedId) {
       setReport(null);
       setError('');
       return;
@@ -65,7 +79,8 @@ export default function ReportsAccountStatement() {
       date,
       from: period === 'range' ? fromDate : undefined,
       to: period === 'range' ? toDate : undefined,
-      captain_id: captainId,
+      captain_id: isStore ? undefined : captainId,
+      store_id: isStore ? storeId : undefined,
       mode,
       include_opening: includeOpening,
     })
@@ -75,7 +90,7 @@ export default function ReportsAccountStatement() {
         setError(err.message || 'تعذر تحميل كشف الحساب');
       })
       .finally(() => setLoading(false));
-  }, [period, date, fromDate, toDate, captainId, mode, includeOpening]);
+  }, [period, date, fromDate, toDate, captainId, storeId, mode, includeOpening, isStore, selectedId]);
 
   const rows = (report?.rows || []).filter((row) => {
     const q = search.trim().toLowerCase();
@@ -83,25 +98,47 @@ export default function ReportsAccountStatement() {
     return (
       row.notes?.toLowerCase().includes(q)
       || row.reference_id?.toString().toLowerCase().includes(q)
+      || row.account_name?.toLowerCase().includes(q)
       || (REF_LABELS[row.reference_type] || row.reference_type)?.toLowerCase().includes(q)
     );
   });
 
-  const captainLabel = report?.captain
-    ? `${report.captain.name} (${report.captain.captain_number})`
-    : '—';
+  const entityLabel = isStore
+    ? (report?.store?.name || '—')
+    : (report?.captain ? `${report.captain.name} (${report.captain.captain_number})` : '—');
 
   return (
     <>
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 report-print-hidden">
         <div>
-          <h2>كشف حساب الكابتن</h2>
-          <p>حركة مالية تفصيلية: طلبات، عمولات، سندات، ورصيد جاري</p>
+          <h2>{isStore ? 'كشف حساب المحل' : 'كشف حساب الكابتن'}</h2>
+          <p>
+            {isStore
+              ? 'حركة مبيعات المحل: فواتير الطلبات والفواتير اليدوية'
+              : 'حركة مالية تفصيلية: طلبات، عمولات، سندات، ورصيد جاري'}
+          </p>
         </div>
         <button type="button" className="btn btn-secondary" onClick={() => window.print()}>طباعة</button>
       </div>
 
       <div className="card mb-5 report-print-hidden space-y-4">
+        <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg w-fit">
+          <button
+            type="button"
+            className={`px-4 py-1.5 rounded-md text-sm font-semibold ${!isStore ? 'bg-white dark:bg-gray-800 shadow' : ''}`}
+            onClick={() => setEntityType('captain')}
+          >
+            كابتن
+          </button>
+          <button
+            type="button"
+            className={`px-4 py-1.5 rounded-md text-sm font-semibold ${isStore ? 'bg-white dark:bg-gray-800 shadow' : ''}`}
+            onClick={() => setEntityType('store')}
+          >
+            محل
+          </button>
+        </div>
+
         <div className="finance-tabs-bar">
           <div className="finance-filter-periods">
             {Object.entries(PERIOD_LABELS).map(([key, label]) => (
@@ -116,16 +153,29 @@ export default function ReportsAccountStatement() {
             ))}
           </div>
           <div className="finance-page-filter flex-wrap">
-            <select
-              className="finance-filter-select"
-              value={captainId}
-              onChange={(e) => setCaptainId(e.target.value)}
-            >
-              <option value="">اختر الكابتن...</option>
-              {captains.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
-              ))}
-            </select>
+            {isStore ? (
+              <select
+                className="finance-filter-select"
+                value={storeId}
+                onChange={(e) => setStoreId(e.target.value)}
+              >
+                <option value="">اختر المحل...</option>
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            ) : (
+              <select
+                className="finance-filter-select"
+                value={captainId}
+                onChange={(e) => setCaptainId(e.target.value)}
+              >
+                <option value="">اختر الكابتن...</option>
+                {captains.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
+                ))}
+              </select>
+            )}
             {period === 'range' ? (
               <>
                 <input className="finance-filter-date-input" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
@@ -145,7 +195,7 @@ export default function ReportsAccountStatement() {
               className={`px-3 py-1.5 rounded-md text-sm font-semibold ${mode === 'detailed' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}
               onClick={() => setMode('detailed')}
             >
-              تحليلي (طلبات)
+              {isStore ? 'تحليلي (فواتير)' : 'تحليلي (طلبات)'}
             </button>
             <button
               type="button"
@@ -171,19 +221,21 @@ export default function ReportsAccountStatement() {
 
       <div className="card report-page">
         <div className="report-print-header">
-          <h3>كشف حساب الكابتن التحليلي</h3>
-          <p>الكابتن: {captainLabel}</p>
+          <h3>{isStore ? 'كشف حساب المحل' : 'كشف حساب الكابتن التحليلي'}</h3>
+          <p>{isStore ? 'المحل' : 'الكابتن'}: {entityLabel}</p>
           <p>من {formatDateKey(range.from)} إلى {formatDateKey(range.to)}</p>
         </div>
 
-        {!captainId && (
-          <p className="text-gray-500 dark:text-gray-400 py-8 text-center">اختر كابتناً لعرض كشف الحساب</p>
+        {!selectedId && (
+          <p className="text-gray-500 dark:text-gray-400 py-8 text-center">
+            {isStore ? 'اختر محلاً لعرض كشف الحساب' : 'اختر كابتناً لعرض كشف الحساب'}
+          </p>
         )}
 
         {error && <p className="text-red-600 py-4 text-center">{error}</p>}
-        {loading && captainId && <p className="text-gray-500 py-8 text-center">جاري التحميل...</p>}
+        {loading && selectedId && <p className="text-gray-500 py-8 text-center">جاري التحميل...</p>}
 
-        {!loading && captainId && report && (
+        {!loading && selectedId && report && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 report-print-hidden">
               <div className="rounded-xl border dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900/40">
@@ -218,7 +270,7 @@ export default function ReportsAccountStatement() {
                     <th>دائن</th>
                     <th>الرصيد</th>
                     <th>الحالة</th>
-                    <th>البيان</th>
+                    <th>{isStore ? 'الكابتن / البيان' : 'البيان'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -239,7 +291,16 @@ export default function ReportsAccountStatement() {
                           {row.balance_status}
                         </span>
                       </td>
-                      <td className="text-right max-w-md">{row.notes || '—'}</td>
+                      <td className="text-right max-w-md">
+                        {isStore && !row.is_opening && row.account_name ? (
+                          <>
+                            <span className="font-semibold">{row.account_name}</span>
+                            {row.notes ? ` — ${row.notes}` : ''}
+                          </>
+                        ) : (
+                          row.notes || '—'
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

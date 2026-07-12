@@ -226,12 +226,13 @@ export const api = {
     if (to) params.set('to', to);
     return request(`/reports/stores?${params}`);
   },
-  getAccountStatement: ({ period = 'month', date, from, to, captain_id, mode, include_opening } = {}) => {
+  getAccountStatement: ({ period = 'month', date, from, to, captain_id, store_id, mode, include_opening } = {}) => {
     const params = new URLSearchParams({ period });
     if (date) params.set('date', date);
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     if (captain_id) params.set('captain_id', captain_id);
+    if (store_id) params.set('store_id', store_id);
     if (mode) params.set('mode', mode);
     if (include_opening === false) params.set('include_opening', 'false');
     return request(`/reports/account-statement?${params}`);
