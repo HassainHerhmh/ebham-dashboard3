@@ -296,7 +296,7 @@ table tr:hover td {
 }
 
 .attendance-summary {
-  @apply grid grid-cols-2 md:grid-cols-3 gap-4 mb-5;
+  @apply grid grid-cols-2 md:grid-cols-4 gap-4 mb-5;
 }
 
 .attendance-stat {
@@ -321,6 +321,10 @@ table tr:hover td {
 
 .attendance-stat--off {
   @apply bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400;
+}
+
+.attendance-stat--excused {
+  @apply bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300;
 }
 
 .avatar {
@@ -1851,6 +1855,26 @@ table tr:hover td {
   color: #4b5563;
 }
 
+.attendance-matrix-cell--excused {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.attendance-matrix-cell--editable {
+  cursor: pointer;
+}
+
+.attendance-matrix-cell--editable:hover {
+  filter: brightness(0.96);
+}
+
+.attendance-matrix-cell--editable.is-manual {
+  outline: 2px solid rgba(59, 130, 246, 0.35);
+  outline-offset: -2px;
+}
+
 .dark .attendance-matrix-cell--present {
   background: rgba(34, 197, 94, 0.18);
   color: #86efac;
@@ -1864,6 +1888,11 @@ table tr:hover td {
 .dark .attendance-matrix-cell--off {
   background: rgba(107, 114, 128, 0.18);
   color: #d1d5db;
+}
+
+.dark .attendance-matrix-cell--excused {
+  background: rgba(59, 130, 246, 0.22);
+  color: #93c5fd;
 }
 
 @media print {

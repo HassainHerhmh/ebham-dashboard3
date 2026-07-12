@@ -74,6 +74,19 @@ export const api = {
   }),
   deleteCaptain: (id) => request(`/captains/${id}`, { method: 'DELETE' }),
 
+  getCaptainGroups: () => request('/captain-groups'),
+  createCaptainGroup: (name) => request('/captain-groups', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  }),
+  updateCaptainGroup: (id, name) => request(`/captain-groups/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  }),
+  deleteCaptainGroup: (id) => request(`/captain-groups/${id}`, { method: 'DELETE' }),
+
   getShifts: (captainId) => request(`/shifts${captainId ? `?captain_id=${captainId}` : ''}`),
   saveShifts: (captainId, shifts) => request(`/shifts/captain/${captainId}`, {
     method: 'PUT',
@@ -115,18 +128,29 @@ export const api = {
     body: JSON.stringify(data || {}),
   }),
 
-  getAttendanceReport: ({ period = 'day', date, captain_id } = {}) => {
+  getAttendanceReport: ({ period = 'day', date, captain_id, group_id } = {}) => {
     const params = new URLSearchParams({ period });
     if (date) params.set('date', date);
     if (captain_id) params.set('captain_id', captain_id);
+    if (group_id) params.set('group_id', group_id);
     return request(`/attendance/report?${params}`);
   },
-  getAttendanceMonthlyReport: ({ date, captain_id } = {}) => {
+  getAttendanceMonthlyReport: ({ date, captain_id, group_id } = {}) => {
     const params = new URLSearchParams();
     if (date) params.set('date', date);
     if (captain_id) params.set('captain_id', captain_id);
+    if (group_id) params.set('group_id', group_id);
     const qs = params.toString();
     return request(`/reports/attendance-monthly${qs ? `?${qs}` : ''}`);
+  },
+  saveAttendanceOverride: ({ captain_id, check_date, status, note }) => request('/attendance/override', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ captain_id, check_date, status, note }),
+  }),
+  clearAttendanceOverride: (captain_id, check_date) => {
+    const params = new URLSearchParams({ captain_id, check_date });
+    return request(`/attendance/override?${params}`, { method: 'DELETE' });
   },
 
   getFinanceConfig: () => request('/finance/config'),

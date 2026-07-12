@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Pencil, KeyRound } from 'lucide-react';
+import { Pencil, KeyRound, Users } from 'lucide-react';
 import { api, mediaUrl } from '../api';
 
 function CaptainAvatar({ captain }) {
@@ -22,26 +22,47 @@ function formatMoney(n) {
 
 export default function Captains() {
   const [captains, setCaptains] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [modal, setModal] = useState(null);
-  const [form, setForm] = useState({ name: '', phone: '', captain_number: '', username: '', password: '123456', photo: null });
+  const [form, setForm] = useState({
+    name: '', phone: '', captain_number: '', username: '', password: '123456', photo: null, group_id: '',
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetTarget, setResetTarget] = useState(null);
   const [resetForm, setResetForm] = useState({ password: '', confirm: '' });
   const [resetError, setResetError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+  const [groupsModal, setGroupsModal] = useState(false);
+  const [groupForm, setGroupForm] = useState({ id: '', name: '' });
+  const [groupError, setGroupError] = useState('');
+  const [groupLoading, setGroupLoading] = useState(false);
 
   const load = () => api.getCaptains().then(setCaptains);
-  useEffect(() => { load(); }, []);
+  const loadGroups = () => api.getCaptainGroups().then(setGroups);
+
+  useEffect(() => {
+    load();
+    loadGroups();
+  }, []);
 
   const openAdd = () => {
-    setForm({ name: '', phone: '', captain_number: '', username: '', password: '123456', photo: null });
+    setForm({ name: '', phone: '', captain_number: '', username: '', password: '123456', photo: null, group_id: '' });
     setError('');
     setModal('add');
   };
 
   const openEdit = (c) => {
-    setForm({ name: c.name, phone: c.phone, captain_number: c.captain_number, username: c.username || '', password: '', photo: null, id: c.id });
+    setForm({
+      name: c.name,
+      phone: c.phone,
+      captain_number: c.captain_number,
+      username: c.username || '',
+      password: '',
+      photo: null,
+      id: c.id,
+      group_id: c.group_id || '',
+    });
     setError('');
     setModal('edit');
   };
@@ -56,6 +77,7 @@ export default function Captains() {
       fd.append('phone', form.phone);
       fd.append('captain_number', form.captain_number);
       fd.append('username', form.username);
+      fd.append('group_id', form.group_id || '');
       if (form.password) fd.append('password', form.password);
       if (form.photo) fd.append('photo', form.photo);
 
@@ -77,6 +99,7 @@ export default function Captains() {
     if (!confirm('هل أنت متأكد من حذف هذا الكابتن؟')) return;
     await api.deleteCaptain(id);
     load();
+    loadGroups();
   };
 
   const openResetPassword = (captain) => {
@@ -108,6 +131,55 @@ export default function Captains() {
     }
   };
 
+  const openGroupsModal = () => {
+    setGroupForm({ id: '', name: '' });
+    setGroupError('');
+    setGroupsModal(true);
+    loadGroups();
+  };
+
+  const openGroupEdit = (group) => {
+    setGroupForm({ id: group.id, name: group.name });
+    setGroupError('');
+  };
+
+  const resetGroupForm = () => {
+    setGroupForm({ id: '', name: '' });
+    setGroupError('');
+  };
+
+  const handleGroupSubmit = async (e) => {
+    e.preventDefault();
+    setGroupLoading(true);
+    setGroupError('');
+    try {
+      if (groupForm.id) {
+        await api.updateCaptainGroup(groupForm.id, groupForm.name);
+      } else {
+        await api.createCaptainGroup(groupForm.name);
+      }
+      resetGroupForm();
+      loadGroups();
+      load();
+    } catch (err) {
+      setGroupError(err.message);
+    } finally {
+      setGroupLoading(false);
+    }
+  };
+
+  const handleGroupDelete = async (id) => {
+    if (!confirm('هل أنت متأكد من حذف هذه المجموعة؟')) return;
+    try {
+      await api.deleteCaptainGroup(id);
+      loadGroups();
+      load();
+      if (groupForm.id === id) resetGroupForm();
+    } catch (err) {
+      setGroupError(err.message);
+    }
+  };
+
   return (
     <>
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -115,7 +187,13 @@ export default function Captains() {
           <h2>الكباتن</h2>
           <p>إدارة الكباتن وبياناتهم</p>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ إضافة كابتن</button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-secondary inline-flex items-center gap-2" onClick={openGroupsModal}>
+            <Users size={16} />
+            مجموعات الكباتن
+          </button>
+          <button type="button" className="btn btn-primary" onClick={openAdd}>+ إضافة كابتن</button>
+        </div>
       </div>
 
       <div className="card">
@@ -127,6 +205,7 @@ export default function Captains() {
               <tr>
                 <th>الصورة</th>
                 <th>الاسم</th>
+                <th>المجموعة</th>
                 <th>اسم المستخدم</th>
                 <th>رقم الكابتن</th>
                 <th>الهاتف</th>
@@ -139,6 +218,7 @@ export default function Captains() {
                 <tr key={c.id}>
                   <td><CaptainAvatar captain={c} /></td>
                   <td><strong>{c.name}</strong></td>
+                  <td>{c.group_name ? <span className="badge badge-blue">{c.group_name}</span> : '—'}</td>
                   <td><span className="badge badge-blue">{c.username || '—'}</span></td>
                   <td><span className="badge badge-green">{c.captain_number}</span></td>
                   <td>{c.phone}</td>
@@ -150,6 +230,7 @@ export default function Captains() {
                   <td>
                     <div className="flex flex-wrap gap-2">
                       <button
+                        type="button"
                         className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-blue-600 text-sm"
                         onClick={() => openEdit(c)}
                       >
@@ -157,13 +238,14 @@ export default function Captains() {
                         تعديل
                       </button>
                       <button
+                        type="button"
                         className="inline-flex items-center gap-1 text-purple-600 hover:underline text-sm"
                         onClick={() => openResetPassword(c)}
                       >
                         <KeyRound size={14} />
                         كلمة المرور
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(c.id)}>حذف</button>
+                      <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDelete(c.id)}>حذف</button>
                     </div>
                   </td>
                 </tr>
@@ -182,6 +264,15 @@ export default function Captains() {
               <div className="form-group">
                 <label>الاسم</label>
                 <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label>المجموعة</label>
+                <select value={form.group_id} onChange={e => setForm({ ...form, group_id: e.target.value })}>
+                  <option value="">بدون مجموعة</option>
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>اسم المستخدم</label>
@@ -219,6 +310,70 @@ export default function Captains() {
                 <button type="button" className="btn btn-secondary" onClick={() => setModal(null)}>إلغاء</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {groupsModal && (
+        <div className="modal-overlay" onClick={() => setGroupsModal(false)}>
+          <div className="modal modal--wide" onClick={e => e.stopPropagation()}>
+            <h3>مجموعات الكباتن</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">أنشئ مجموعات لتنظيم الكباتن وفلترة كشف التحضير</p>
+
+            <form onSubmit={handleGroupSubmit} className="mb-4">
+              {groupError && <p className="text-red-500 text-sm mb-3">{groupError}</p>}
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <div className="form-group flex-1 mb-0">
+                  <label>{groupForm.id ? 'تعديل المجموعة' : 'اسم المجموعة الجديدة'}</label>
+                  <input
+                    value={groupForm.name}
+                    onChange={e => setGroupForm({ ...groupForm, name: e.target.value })}
+                    placeholder="مثال: مجموعة صباحية"
+                    required
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" className="btn btn-primary" disabled={groupLoading}>
+                    {groupLoading ? 'جاري الحفظ...' : (groupForm.id ? 'حفظ التعديل' : '+ إضافة مجموعة')}
+                  </button>
+                  {groupForm.id && (
+                    <button type="button" className="btn btn-secondary" onClick={resetGroupForm}>إلغاء التعديل</button>
+                  )}
+                </div>
+              </div>
+            </form>
+
+            {groups.length === 0 ? (
+              <div className="empty-state">لا توجد مجموعات بعد</div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>اسم المجموعة</th>
+                    <th>عدد الكباتن</th>
+                    <th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.map(group => (
+                    <tr key={group.id}>
+                      <td><strong>{group.name}</strong></td>
+                      <td>{group.captains_count}</td>
+                      <td>
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" className="text-blue-600 text-sm" onClick={() => openGroupEdit(group)}>تعديل</button>
+                          <button type="button" className="btn btn-danger btn-sm" onClick={() => handleGroupDelete(group.id)}>حذف</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <div className="modal-actions mt-4">
+              <button type="button" className="btn btn-secondary" onClick={() => setGroupsModal(false)}>إغلاق</button>
+            </div>
           </div>
         </div>
       )}
