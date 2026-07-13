@@ -83,6 +83,33 @@ function isSameDay(d1, d2) {
     && d1.getDate() === d2.getDate();
 }
 
+function captainFirstName(captainOrName) {
+  const name = typeof captainOrName === 'string'
+    ? captainOrName
+    : String(captainOrName?.name || '').trim();
+  if (!name) return 'كابتن';
+  return name.split(/\s+/)[0];
+}
+
+function orderDoneDate(order) {
+  const raw = order.done_at || order.updated_at || order.created_at;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function filterDoneOrdersByDate(orders, dateFilter) {
+  const now = new Date();
+  return orders.filter((order) => {
+    if (order.status !== 'done') return false;
+    const d = orderDoneDate(order);
+    if (!d) return false;
+    if (dateFilter === 'all') return true;
+    if (dateFilter === 'today') return isSameDay(d, now);
+    return (now.getTime() - d.getTime()) <= 7 * 24 * 60 * 60 * 1000;
+  });
+}
+
 function buildOrderToast({ userName, displayIndex, customerName, patch, currentOrder, captains }) {
   const user = userName || 'مستخدم';
   const orderRef = displayIndex ? `الطلب رقم ${displayIndex}` : 'الطلب';
@@ -377,6 +404,22 @@ export default function Orders({ user }) {
     return counts;
   }, [filteredByDate]);
 
+  const captainDoneStats = useMemo(() => {
+    const doneOrders = filterDoneOrdersByDate(orders, dateFilter);
+    const counts = new Map();
+    for (const order of doneOrders) {
+      if (!order.captain_id) continue;
+      counts.set(order.captain_id, (counts.get(order.captain_id) || 0) + 1);
+    }
+    return captains
+      .map((captain) => ({
+        captainId: captain.id,
+        firstName: captainFirstName(captain),
+        count: counts.get(captain.id) || 0,
+      }))
+      .sort((a, b) => b.count - a.count || a.firstName.localeCompare(b.firstName, 'ar'));
+  }, [orders, captains, dateFilter]);
+
   const visibleOrders = useMemo(() => {
     let list = filteredByDate;
     const term = searchTerm.trim().toLowerCase();
@@ -634,6 +677,17 @@ export default function Orders({ user }) {
             </button>
           ))}
         </div>
+
+        {captainDoneStats.length > 0 && (
+          <div className="orders-captain-stats" aria-label="الطلبات المكتملة حسب الكابتن">
+            {captainDoneStats.map((row) => (
+              <div className="orders-captain-stat" key={row.captainId}>
+                <span className="orders-captain-stat__name">{row.firstName}</span>
+                <strong className="orders-captain-stat__count">{row.count}</strong>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="orders-toolbar__footer">
           <div className="orders-date-filters">
