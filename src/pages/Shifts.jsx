@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { api, DAYS, WEEK_ORDER_SATURDAY } from '../api';
+import { useState, useEffect, useMemo } from 'react';
+import { Printer } from 'lucide-react';
+import { api, DAYS, WEEK_ORDER_SATURDAY, formatTimeRangeAr } from '../api';
 
 const defaultDayShift = (i) => ({
   day_of_week: i,
@@ -59,8 +60,79 @@ function normalizeShift(existing, i) {
   };
 }
 
+function formatBreakLabel(hours, mins) {
+  const parts = [];
+  if (hours > 0) parts.push(`${hours} س`);
+  if (mins > 0) parts.push(`${mins} د`);
+  return parts.length ? parts.join(' ') : '0 د';
+}
+
+function buildScheduleLabel(shift) {
+  if (shift?.schedule_label) return shift.schedule_label;
+  if (!shift) return '—';
+  const periodCount = Number(shift.period_count) === 1 ? 1 : 2;
+  const p1Start = shift.period1_start || shift.start_time || '08:00';
+  const p1End = shift.period1_end || '12:00';
+  const p2Start = shift.period2_start || '14:00';
+  const p2End = shift.period2_end || shift.end_time || '17:00';
+  if (periodCount === 1) {
+    return formatTimeRangeAr(p1Start, p2End);
+  }
+  const breakMins = Number(
+    shift.break_minutes ?? Math.round(Number(shift.break_hours ?? 2) * 60)
+  );
+  const breakHours = Math.floor(breakMins / 60);
+  const breakMinsPart = breakMins % 60;
+  return `${formatTimeRangeAr(p1Start, p1End)} | راحة ${formatBreakLabel(breakHours, breakMinsPart)} | ${formatTimeRangeAr(p2Start, p2End)}`;
+}
+
+function buildShiftScheduleRows(captains, allShifts, groupId) {
+  const filteredCaptains = groupId
+    ? captains.filter((captain) => captain.group_id === groupId)
+    : captains;
+
+  const shiftsByCaptain = new Map();
+  for (const shift of allShifts) {
+    const list = shiftsByCaptain.get(shift.captain_id) || [];
+    list.push(shift);
+    shiftsByCaptain.set(shift.captain_id, list);
+  }
+
+  return filteredCaptains.map((captain, index) => {
+    const dayMap = new Map(
+      (shiftsByCaptain.get(captain.id) || []).map((shift) => [shift.day_of_week, shift])
+    );
+    return {
+      captainId: captain.id,
+      index: index + 1,
+      captainName: captain.name,
+      captainNumber: captain.captain_number,
+      groupName: captain.group_name || '',
+      cells: WEEK_ORDER_SATURDAY.map((dayIndex) => {
+        const shift = dayMap.get(dayIndex);
+        if (!shift) return '—';
+        if (shift.is_active === false || shift.is_active === 0) return 'إجازة';
+        return buildScheduleLabel(shift);
+      }),
+    };
+  });
+}
+
+function printDateLabel() {
+  return new Date().toLocaleDateString('ar-YE', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
 export default function Shifts() {
   const [captains, setCaptains] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [groupId, setGroupId] = useState('');
+  const [allShifts, setAllShifts] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
   const [selectedId, setSelectedId] = useState('');
   const [shifts, setShifts] = useState(DEFAULT_SHIFTS);
   const [saved, setSaved] = useState(false);
@@ -100,7 +172,33 @@ export default function Shifts() {
       setCaptains(list);
       if (list.length) setSelectedId(list[0].id);
     });
+    api.getCaptainGroups().then(setGroups).catch(() => setGroups([]));
   }, []);
+
+  const loadAllShifts = async () => {
+    setScheduleLoading(true);
+    try {
+      const rows = await api.getShifts();
+      setAllShifts(rows || []);
+    } catch {
+      setAllShifts([]);
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllShifts();
+  }, []);
+
+  const scheduleRows = useMemo(
+    () => buildShiftScheduleRows(captains, allShifts, groupId),
+    [captains, allShifts, groupId]
+  );
+
+  const selectedGroupLabel = groupId
+    ? (groups.find((group) => group.id === groupId)?.name || 'مجموعة محددة')
+    : 'كل المجموعات';
 
   useEffect(() => {
     if (!selectedId) return;
@@ -132,6 +230,7 @@ export default function Shifts() {
       }));
       await api.saveShifts(selectedId, payload);
       setSaved(true);
+      await loadAllShifts();
       setTimeout(() => setSaved(false), 3000);
     } finally {
       setLoading(false);
@@ -142,12 +241,79 @@ export default function Shifts() {
 
   return (
     <>
-      <div className="page-header">
-        <h2>إعداد الدوام</h2>
-        <p>حدّد فترة واحدة أو فترتين مع فترة راحة لكل يوم</p>
+      <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 report-print-hidden">
+        <div>
+          <h2>إعداد الدوام</h2>
+          <p>حدّد فترة واحدة أو فترتين مع فترة راحة لكل يوم — واطبع جدول الدوام</p>
+        </div>
+        <button type="button" className="btn btn-secondary" onClick={() => window.print()}>
+          <Printer size={16} />
+          طباعة جدول الدوام
+        </button>
       </div>
 
-      <div className="card">
+      <div className="card mb-5 shifts-print-card">
+        <div className="report-print-header">
+          <h3>جدول دوام الكباتن</h3>
+          <p>
+            المجموعة: <strong>{selectedGroupLabel}</strong>
+            {' — '}
+            تاريخ الطباعة: {printDateLabel()}
+          </p>
+        </div>
+
+        <div className="report-print-hidden mb-4">
+          <div className="form-group" style={{ maxWidth: 320 }}>
+            <label>مجموعة الكباتن</label>
+            <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+              <option value="">كل المجموعات</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>{group.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {scheduleLoading ? (
+          <p className="empty-state">جاري تحميل جدول الدوام...</p>
+        ) : scheduleRows.length === 0 ? (
+          <p className="empty-state">لا يوجد كباتن في هذه المجموعة</p>
+        ) : (
+          <div className="report-table-wrap shifts-print-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>الكابتن</th>
+                  {WEEK_ORDER_SATURDAY.map((dayIndex) => (
+                    <th key={dayIndex}>{DAYS[dayIndex]}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {scheduleRows.map((row) => (
+                  <tr key={row.captainId}>
+                    <td>{row.index}</td>
+                    <td className="shifts-print-captain">
+                      <strong>{row.captainName}</strong>
+                      {row.captainNumber ? (
+                        <span className="shifts-print-captain__num"> ({row.captainNumber})</span>
+                      ) : null}
+                    </td>
+                    {row.cells.map((cell, cellIndex) => (
+                      <td key={`${row.captainId}-${cellIndex}`} className="shifts-print-cell">
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card report-print-hidden">
         <div className="form-group" style={{ maxWidth: 400 }}>
           <label>اختر الكابتن</label>
           <select value={selectedId} onChange={e => setSelectedId(e.target.value)}>

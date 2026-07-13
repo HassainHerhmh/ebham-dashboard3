@@ -1841,6 +1841,29 @@ table tr:hover td {
   font-size: 0.9rem;
 }
 
+.shifts-print-table table {
+  min-width: 960px;
+}
+
+.shifts-print-captain {
+  min-width: 140px;
+  white-space: nowrap;
+}
+
+.shifts-print-captain__num {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.shifts-print-cell {
+  min-width: 120px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: normal;
+  text-align: center;
+}
+
 .report-table-wrap {
   overflow-x: auto;
 }
@@ -2046,6 +2069,14 @@ table tr:hover td {
 
   th, td {
     border: 1px solid #d1d5db !important;
+  }
+
+  .shifts-print-cell {
+    font-size: 10px;
+  }
+
+  .shifts-print-captain {
+    font-size: 11px;
   }
 }
 
