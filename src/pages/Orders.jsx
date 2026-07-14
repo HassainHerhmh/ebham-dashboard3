@@ -29,10 +29,23 @@ const STATUS_TABS = [
 ];
 
 const DATE_FILTERS = [
-  { key: 'today', label: 'اليوم' },
+  { key: 'day', label: 'اليوم' },
   { key: 'week', label: 'هذا الأسبوع' },
   { key: 'all', label: 'الكل' },
 ];
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function dateKeyFromValue(value) {
+  if (!value) return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 const POLL_MS = 5000;
 const EXTERNAL_STORE_ID = '__external__';
@@ -77,12 +90,6 @@ function formatStatusTimeline(order) {
   return rows;
 }
 
-function isSameDay(d1, d2) {
-  return d1.getFullYear() === d2.getFullYear()
-    && d1.getMonth() === d2.getMonth()
-    && d1.getDate() === d2.getDate();
-}
-
 function captainFirstName(captainOrName) {
   const name = typeof captainOrName === 'string'
     ? captainOrName
@@ -98,14 +105,17 @@ function orderDoneDate(order) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function filterDoneOrdersByDate(orders, dateFilter) {
+function filterDoneOrdersByDate(orders, dateFilter, filterDate) {
   const now = new Date();
+  const selectedKey = dateKeyFromValue(filterDate) || todayKey();
   return orders.filter((order) => {
     if (order.status !== 'done') return false;
     const d = orderDoneDate(order);
     if (!d) return false;
     if (dateFilter === 'all') return true;
-    if (dateFilter === 'today') return isSameDay(d, now);
+    if (dateFilter === 'day' || dateFilter === 'today') {
+      return dateKeyFromValue(d) === selectedKey;
+    }
     return (now.getTime() - d.getTime()) <= 7 * 24 * 60 * 60 * 1000;
   });
 }
@@ -267,7 +277,8 @@ export default function Orders({ user }) {
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
-  const [dateFilter, setDateFilter] = useState('today');
+  const [dateFilter, setDateFilter] = useState('day');
+  const [filterDate, setFilterDate] = useState(todayKey());
   const [liveUpdates, setLiveUpdates] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [invoicePreview, setInvoicePreview] = useState({ open: false, order: null });
@@ -383,17 +394,18 @@ export default function Orders({ user }) {
   const filteredByDate = useMemo(() => {
     const now = new Date();
     if (dateFilter === 'all') return orders;
-    if (dateFilter === 'today') {
+    if (dateFilter === 'day' || dateFilter === 'today') {
+      const selectedKey = dateKeyFromValue(filterDate) || todayKey();
       return orders.filter(o => {
-        const d = new Date(o.created_at);
-        return !Number.isNaN(d.getTime()) && isSameDay(d, now);
+        const key = dateKeyFromValue(o.created_at);
+        return key === selectedKey;
       });
     }
     return orders.filter(o => {
       const d = new Date(o.created_at);
       return !Number.isNaN(d.getTime()) && (now.getTime() - d.getTime()) <= 7 * 24 * 60 * 60 * 1000;
     });
-  }, [orders, dateFilter]);
+  }, [orders, dateFilter, filterDate]);
 
   const statusCounts = useMemo(() => {
     const counts = { all: filteredByDate.length };
@@ -405,7 +417,7 @@ export default function Orders({ user }) {
   }, [filteredByDate]);
 
   const captainDoneStats = useMemo(() => {
-    const doneOrders = filterDoneOrdersByDate(orders, dateFilter);
+    const doneOrders = filterDoneOrdersByDate(orders, dateFilter, filterDate);
     const counts = new Map();
     for (const order of doneOrders) {
       if (!order.captain_id) continue;
@@ -418,7 +430,7 @@ export default function Orders({ user }) {
         count: counts.get(captain.id) || 0,
       }))
       .sort((a, b) => b.count - a.count || a.firstName.localeCompare(b.firstName, 'ar'));
-  }, [orders, captains, dateFilter]);
+  }, [orders, captains, dateFilter, filterDate]);
 
   const visibleOrders = useMemo(() => {
     let list = filteredByDate;
@@ -691,7 +703,22 @@ export default function Orders({ user }) {
 
         <div className="orders-toolbar__footer">
           <div className="orders-date-filters">
-            {DATE_FILTERS.map(filter => (
+            <label
+              className={`orders-date-picker ${dateFilter === 'day' || dateFilter === 'today' ? 'is-active' : ''}`}
+              title="اختر يوماً من التقويم"
+            >
+              <span>اليوم</span>
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => {
+                  setFilterDate(e.target.value || todayKey());
+                  setDateFilter('day');
+                }}
+                onFocus={() => setDateFilter('day')}
+              />
+            </label>
+            {DATE_FILTERS.filter((filter) => filter.key !== 'day').map(filter => (
               <button
                 key={filter.key}
                 type="button"

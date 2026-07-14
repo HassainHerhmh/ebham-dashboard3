@@ -1006,6 +1006,51 @@ table tr:hover td {
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
 }
 
+.orders-date-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 8px;
+  padding: 0.28rem 0.55rem;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.orders-date-picker.is-active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+}
+
+.orders-date-picker input[type='date'] {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  max-width: 9.5rem;
+  cursor: pointer;
+}
+
+.orders-date-picker.is-active input[type='date'] {
+  color-scheme: dark;
+}
+
+.dark .orders-date-picker {
+  background: #1f2937;
+  color: #cbd5e1;
+}
+
+.dark .orders-date-picker.is-active {
+  background: #2563eb;
+  color: #fff;
+}
+
 .orders-last-refresh {
   font-size: 0.75rem;
   color: #64748b;

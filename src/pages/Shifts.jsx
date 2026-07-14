@@ -68,7 +68,6 @@ function formatBreakLabel(hours, mins) {
 }
 
 function buildScheduleLabel(shift) {
-  if (shift?.schedule_label) return shift.schedule_label;
   if (!shift) return '—';
   const periodCount = Number(shift.period_count) === 1 ? 1 : 2;
   const p1Start = shift.period1_start || shift.start_time || '08:00';
