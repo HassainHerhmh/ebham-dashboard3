@@ -1902,11 +1902,41 @@ table tr:hover td {
 }
 
 .shifts-print-cell {
-  min-width: 120px;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  white-space: normal;
+  min-width: 130px;
+  padding: 0.55rem 0.4rem !important;
+  vertical-align: top;
   text-align: center;
+}
+
+.shifts-print-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.shifts-print-line {
+  display: block;
+  width: 100%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.shifts-print-line--break {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.dark .shifts-print-line {
+  color: #e2e8f0;
+}
+
+.dark .shifts-print-line--break {
+  color: #94a3b8;
 }
 
 .report-table-wrap {
@@ -2118,6 +2148,14 @@ table tr:hover td {
 
   .shifts-print-cell {
     font-size: 10px;
+  }
+
+  .shifts-print-line {
+    font-size: 10px;
+  }
+
+  .shifts-print-line--break {
+    font-size: 9px;
   }
 
   .shifts-print-captain {

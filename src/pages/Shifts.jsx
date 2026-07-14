@@ -67,22 +67,31 @@ function formatBreakLabel(hours, mins) {
   return parts.length ? parts.join(' ') : '0 د';
 }
 
-function buildScheduleLabel(shift) {
-  if (!shift) return '—';
+function buildScheduleLines(shift) {
+  if (!shift) return ['—'];
+  if (shift.is_active === false || shift.is_active === 0) return ['إجازة'];
+
   const periodCount = Number(shift.period_count) === 1 ? 1 : 2;
   const p1Start = shift.period1_start || shift.start_time || '08:00';
   const p1End = shift.period1_end || '12:00';
   const p2Start = shift.period2_start || '14:00';
   const p2End = shift.period2_end || shift.end_time || '17:00';
+
   if (periodCount === 1) {
-    return formatTimeRangeAr(p1Start, p2End);
+    return [formatTimeRangeAr(p1Start, p2End)];
   }
+
   const breakMins = Number(
     shift.break_minutes ?? Math.round(Number(shift.break_hours ?? 2) * 60)
   );
   const breakHours = Math.floor(breakMins / 60);
   const breakMinsPart = breakMins % 60;
-  return `${formatTimeRangeAr(p1Start, p1End)} | راحة ${formatBreakLabel(breakHours, breakMinsPart)} | ${formatTimeRangeAr(p2Start, p2End)}`;
+
+  return [
+    formatTimeRangeAr(p1Start, p1End),
+    `راحة ${formatBreakLabel(breakHours, breakMinsPart)}`,
+    formatTimeRangeAr(p2Start, p2End),
+  ];
 }
 
 function buildShiftScheduleRows(captains, allShifts, groupId) {
@@ -109,9 +118,8 @@ function buildShiftScheduleRows(captains, allShifts, groupId) {
       groupName: captain.group_name || '',
       cells: WEEK_ORDER_SATURDAY.map((dayIndex) => {
         const shift = dayMap.get(dayIndex);
-        if (!shift) return '—';
-        if (shift.is_active === false || shift.is_active === 0) return 'إجازة';
-        return buildScheduleLabel(shift);
+        if (!shift) return ['—'];
+        return buildScheduleLines(shift);
       }),
     };
   });
@@ -299,9 +307,18 @@ export default function Shifts() {
                         <span className="shifts-print-captain__num"> ({row.captainNumber})</span>
                       ) : null}
                     </td>
-                    {row.cells.map((cell, cellIndex) => (
+                    {row.cells.map((lines, cellIndex) => (
                       <td key={`${row.captainId}-${cellIndex}`} className="shifts-print-cell">
-                        {cell}
+                        <div className="shifts-print-lines">
+                          {(Array.isArray(lines) ? lines : [lines]).map((line, lineIndex) => (
+                            <span
+                              key={`${row.captainId}-${cellIndex}-${lineIndex}`}
+                              className={`shifts-print-line${String(line).startsWith('راحة') ? ' shifts-print-line--break' : ''}`}
+                            >
+                              {line}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                     ))}
                   </tr>
