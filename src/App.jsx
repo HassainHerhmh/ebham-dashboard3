@@ -20,6 +20,7 @@ import ReportsSales from './pages/ReportsSales';
 import ReportsCommissions from './pages/ReportsCommissions';
 import ReportsRent from './pages/ReportsRent';
 import ReportsStores from './pages/ReportsStores';
+import ReportsCreditTransfer from './pages/ReportsCreditTransfer';
 import ReportsAccountStatement from './pages/ReportsAccountStatement';
 import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './routes/ProtectedRoute';
@@ -97,6 +98,7 @@ export default function App() {
                 <Route path="/reports/commissions" element={<ProtectedRoute user={user} section="reports_commissions"><ReportsCommissions /></ProtectedRoute>} />
                 <Route path="/reports/rent" element={<ProtectedRoute user={user} section="reports_rent"><ReportsRent /></ProtectedRoute>} />
                 <Route path="/reports/stores" element={<ProtectedRoute user={user} section="reports_stores"><ReportsStores /></ProtectedRoute>} />
+                <Route path="/reports/credit-transfer" element={<ProtectedRoute user={user} section="reports_credit_transfer"><ReportsCreditTransfer /></ProtectedRoute>} />
                 <Route path="/reports/account-statement" element={<ProtectedRoute user={user} section="reports_account_statement"><ReportsAccountStatement /></ProtectedRoute>} />
                 <Route path="/unauthorized" element={<Unauthorized />} />
                 <Route path="*" element={<Navigate to={getFirstAccessiblePath(user)} replace />} />

@@ -38,6 +38,7 @@ const REPORTS_MENU = [
   { path: '/reports/commissions', label: 'تقارير العمولات', icon: Wallet, section: 'reports_commissions' },
   { path: '/reports/rent', label: 'تقارير الإيجار', icon: Wallet, section: 'reports_rent' },
   { path: '/reports/stores', label: 'تقارير المحلات', icon: Wallet, section: 'reports_stores' },
+  { path: '/reports/credit-transfer', label: 'الآجل والحوالات', icon: FileText, section: 'reports_credit_transfer' },
   { path: '/reports/account-statement', label: 'كشف حساب', icon: FileText, section: 'reports_account_statement' },
 ];
 

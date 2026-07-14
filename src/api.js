@@ -262,6 +262,15 @@ export const api = {
     if (to) params.set('to', to);
     return request(`/reports/stores?${params}`);
   },
+  getCreditTransferReport: ({ period = 'day', date, from, to, captain_id, payment_type } = {}) => {
+    const params = new URLSearchParams({ period });
+    if (date) params.set('date', date);
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (captain_id) params.set('captain_id', captain_id);
+    if (payment_type) params.set('payment_type', payment_type);
+    return request(`/reports/credit-transfer?${params}`);
+  },
   getAccountStatement: ({ period = 'month', date, from, to, captain_id, store_id, mode, include_opening } = {}) => {
     const params = new URLSearchParams({ period });
     if (date) params.set('date', date);

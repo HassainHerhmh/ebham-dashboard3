@@ -50,6 +50,7 @@ export const permissionGroups = [
       { key: 'reports_commissions', label: 'تقارير العمولات', path: '/reports/commissions' },
       { key: 'reports_rent', label: 'تقارير الإيجار', path: '/reports/rent' },
       { key: 'reports_stores', label: 'تقارير المحلات', path: '/reports/stores' },
+      { key: 'reports_credit_transfer', label: 'الآجل والحوالات', path: '/reports/credit-transfer' },
       { key: 'reports_account_statement', label: 'كشف الحساب', path: '/reports/account-statement' },
     ],
   },
