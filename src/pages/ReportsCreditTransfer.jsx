@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
 import { api } from '../api';
 import { PERIOD_LABELS, todayKey, getFilterRange, formatFilterHint, formatMoney, formatDateKey, formatDateTime } from './reportsShared';
 
@@ -13,6 +14,43 @@ const PAYMENT_BADGE = {
   transfer: 'badge badge-blue',
 };
 
+function matchesSearch(row, term) {
+  if (!term) return true;
+  const haystack = [
+    row.order_number,
+    row.customer_name,
+    row.customer_phone,
+    row.captain_name,
+    row.captain_number,
+    row.payment_label,
+    row.amount,
+    row.order_date,
+  ].map((v) => String(v || '').toLowerCase()).join(' ');
+  return haystack.includes(term);
+}
+
+function summarizeRows(rows) {
+  return rows.reduce((acc, row) => {
+    acc.orders_count += 1;
+    acc.total_amount += Number(row.amount) || 0;
+    if (row.payment_type === 'credit') {
+      acc.credit_count += 1;
+      acc.credit_amount += Number(row.amount) || 0;
+    } else {
+      acc.transfer_count += 1;
+      acc.transfer_amount += Number(row.amount) || 0;
+    }
+    return acc;
+  }, {
+    orders_count: 0,
+    total_amount: 0,
+    credit_count: 0,
+    credit_amount: 0,
+    transfer_count: 0,
+    transfer_amount: 0,
+  });
+}
+
 export default function ReportsCreditTransfer() {
   const [captains, setCaptains] = useState([]);
   const [period, setPeriod] = useState('month');
@@ -21,6 +59,7 @@ export default function ReportsCreditTransfer() {
   const [toDate, setToDate] = useState(todayKey());
   const [captainId, setCaptainId] = useState('');
   const [paymentType, setPaymentType] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const range = getFilterRange(period, date, fromDate, toDate);
@@ -42,6 +81,15 @@ export default function ReportsCreditTransfer() {
       .then(setReport)
       .finally(() => setLoading(false));
   }, [period, date, fromDate, toDate, captainId, paymentType]);
+
+  const filteredRows = useMemo(() => {
+    const rows = report?.rows || [];
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return rows;
+    return rows.filter((row) => matchesSearch(row, term));
+  }, [report, searchTerm]);
+
+  const summary = useMemo(() => summarizeRows(filteredRows), [filteredRows]);
 
   return (
     <>
@@ -90,6 +138,17 @@ export default function ReportsCreditTransfer() {
             <span className="finance-filter-hint">{formatFilterHint(period, range)}</span>
           </div>
         </div>
+
+        <div className="orders-search-wrap mt-4" style={{ marginInline: 0, maxWidth: 420 }}>
+          <Search size={16} className="orders-search-icon" />
+          <input
+            type="text"
+            className="orders-search-input"
+            placeholder="بحث برقم الطلب / العميل / الجوال / الكابتن"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="card report-page">
@@ -99,38 +158,43 @@ export default function ReportsCreditTransfer() {
             من {formatDateKey(range.from)} إلى {formatDateKey(range.to)}
             {' — '}
             {PAYMENT_FILTERS.find((item) => item.key === paymentType)?.label || 'الكل'}
+            {searchTerm.trim() ? ` — بحث: ${searchTerm.trim()}` : ''}
           </p>
         </div>
 
         {loading ? (
           <div className="empty-state">جاري التحميل...</div>
-        ) : !report || report.rows.length === 0 ? (
-          <div className="empty-state">لا توجد طلبات آجلة أو حوالات في الفترة المحددة</div>
+        ) : !report || filteredRows.length === 0 ? (
+          <div className="empty-state">
+            {report?.rows?.length
+              ? 'لا توجد نتائج مطابقة للبحث'
+              : 'لا توجد طلبات آجلة أو حوالات في الفترة المحددة'}
+          </div>
         ) : (
           <>
             <div className="stats-grid report-print-hidden">
               <div className="stat-card">
-                <div className="number">{report.summary.orders_count}</div>
+                <div className="number">{summary.orders_count}</div>
                 <div className="label">عدد الطلبات</div>
               </div>
               <div className="stat-card">
-                <div className="number">{formatMoney(report.summary.total_amount)}</div>
+                <div className="number">{formatMoney(summary.total_amount)}</div>
                 <div className="label">الإجمالي</div>
               </div>
               <div className="stat-card">
-                <div className="number">{report.summary.credit_count}</div>
+                <div className="number">{summary.credit_count}</div>
                 <div className="label">طلبات آجل</div>
               </div>
               <div className="stat-card">
-                <div className="number">{formatMoney(report.summary.credit_amount)}</div>
+                <div className="number">{formatMoney(summary.credit_amount)}</div>
                 <div className="label">مبلغ الآجل</div>
               </div>
               <div className="stat-card">
-                <div className="number">{report.summary.transfer_count}</div>
+                <div className="number">{summary.transfer_count}</div>
                 <div className="label">طلبات حوالة</div>
               </div>
               <div className="stat-card">
-                <div className="number">{formatMoney(report.summary.transfer_amount)}</div>
+                <div className="number">{formatMoney(summary.transfer_amount)}</div>
                 <div className="label">مبلغ الحوالات</div>
               </div>
             </div>
@@ -153,7 +217,7 @@ export default function ReportsCreditTransfer() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.rows.map((row) => (
+                  {filteredRows.map((row) => (
                     <tr key={row.id}>
                       <td>{row.order_number || '—'}</td>
                       <td>{formatDateKey(row.order_date)}</td>
@@ -183,7 +247,7 @@ export default function ReportsCreditTransfer() {
                 <tfoot>
                   <tr>
                     <td colSpan={6}><strong>الإجمالي</strong></td>
-                    <td><strong>{formatMoney(report.summary.total_amount)} ر.ي</strong></td>
+                    <td><strong>{formatMoney(summary.total_amount)} ر.ي</strong></td>
                     <td colSpan={4} />
                   </tr>
                 </tfoot>
