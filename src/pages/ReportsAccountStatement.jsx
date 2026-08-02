@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { PERIOD_LABELS, todayKey, getFilterRange, formatFilterHint, formatMoney, formatDateKey } from './reportsShared';
 
@@ -48,6 +48,7 @@ export default function ReportsAccountStatement() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const requestIdRef = useRef(0);
 
   const range = getFilterRange(period, date, fromDate, toDate);
   const isStore = entityType === 'store';
@@ -66,31 +67,55 @@ export default function ReportsAccountStatement() {
     setSearch('');
   }, [entityType]);
 
+  const handlePeriodChange = (nextPeriod) => {
+    if (nextPeriod === 'range' && period !== 'range') {
+      const current = getFilterRange(period, date, fromDate, toDate);
+      setFromDate(current.from);
+      setToDate(current.to);
+    } else if (nextPeriod !== 'range' && period === 'range') {
+      setDate(fromDate || todayKey());
+    }
+    setPeriod(nextPeriod);
+  };
+
   useEffect(() => {
     if (!selectedId) {
       setReport(null);
       setError('');
-      return;
+      setLoading(false);
+      return undefined;
     }
+
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError('');
+
     api.getAccountStatement({
       period,
       date,
-      from: period === 'range' ? fromDate : undefined,
-      to: period === 'range' ? toDate : undefined,
+      from: range.from,
+      to: range.to,
       captain_id: isStore ? undefined : captainId,
       store_id: isStore ? storeId : undefined,
       mode,
       include_opening: includeOpening,
     })
-      .then(setReport)
+      .then((data) => {
+        if (requestId !== requestIdRef.current) return;
+        setReport(data);
+      })
       .catch((err) => {
+        if (requestId !== requestIdRef.current) return;
         setReport(null);
         setError(err.message || 'تعذر تحميل كشف الحساب');
       })
-      .finally(() => setLoading(false));
-  }, [period, date, fromDate, toDate, captainId, storeId, mode, includeOpening, isStore, selectedId]);
+      .finally(() => {
+        if (requestId !== requestIdRef.current) return;
+        setLoading(false);
+      });
+
+    return undefined;
+  }, [period, date, fromDate, toDate, captainId, storeId, mode, includeOpening, isStore, selectedId, range.from, range.to]);
 
   const rows = (report?.rows || []).filter((row) => {
     const q = search.trim().toLowerCase();
@@ -102,6 +127,9 @@ export default function ReportsAccountStatement() {
       || (REF_LABELS[row.reference_type] || row.reference_type)?.toLowerCase().includes(q)
     );
   });
+
+  const reportFrom = report?.from || range.from;
+  const reportTo = report?.to || range.to;
 
   const entityLabel = isStore
     ? (report?.store?.name || '—')
@@ -146,7 +174,7 @@ export default function ReportsAccountStatement() {
                 key={key}
                 type="button"
                 className={`finance-filter-period-btn ${period === key ? 'active' : ''}`}
-                onClick={() => setPeriod(key)}
+                onClick={() => handlePeriodChange(key)}
               >
                 {label}
               </button>
@@ -223,7 +251,14 @@ export default function ReportsAccountStatement() {
         <div className="report-print-header">
           <h3>{isStore ? 'كشف حساب المحل' : 'كشف حساب الكابتن التحليلي'}</h3>
           <p>{isStore ? 'المحل' : 'الكابتن'}: {entityLabel}</p>
-          <p>من {formatDateKey(range.from)} إلى {formatDateKey(range.to)}</p>
+          <p>
+            الفترة: {PERIOD_LABELS[period] || period}
+            {' — '}
+            من {formatDateKey(reportFrom)} إلى {formatDateKey(reportTo)}
+          </p>
+          <p>
+            الرصيد السابق: {includeOpening ? 'مفعّل' : 'معطّل'}
+          </p>
         </div>
 
         {!selectedId && (
