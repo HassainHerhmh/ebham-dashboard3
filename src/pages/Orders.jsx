@@ -77,6 +77,25 @@ function formatOrderTime(value) {
   }
 }
 
+function formatOrderDate(value) {
+  if (!value) return '—';
+  try {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('ar-YE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function orderDisplayDate(order) {
+  return order.created_at || order.done_at || order.updated_at || null;
+}
+
 function formatStatusTimeline(order) {
   const rows = [];
   if (order.assigned_at) rows.push({ icon: '👤', time: formatOrderTime(order.assigned_at), label: 'تعيين' });
@@ -633,6 +652,8 @@ export default function Orders({ user }) {
     }
   };
 
+  const showOrderDateColumn = dateFilter === 'week' || dateFilter === 'all';
+
   return (
     <>
       {msg && (
@@ -746,6 +767,7 @@ export default function Orders({ user }) {
               <thead>
                 <tr>
                   <th>#</th>
+                  {showOrderDateColumn && <th>التاريخ</th>}
                   <th>العميل</th>
                   <th>الجوال</th>
                   <th>تفاصيل الطلب</th>
@@ -765,6 +787,11 @@ export default function Orders({ user }) {
                 {visibleOrders.map((order) => (
                   <tr key={order.id} className={savingId === order.id ? 'opacity-70' : ''}>
                     <td>{order.display_number}</td>
+                    {showOrderDateColumn && (
+                      <td className="whitespace-nowrap">
+                        {formatOrderDate(orderDisplayDate(order))}
+                      </td>
+                    )}
                     <td>{order.customer_name}</td>
                     <td>{order.customer_phone || '—'}</td>
                     <td className="min-w-[180px]">{(order.items || []).map(formatItemDetailsLine).join(' | ') || '—'}</td>
