@@ -47,7 +47,7 @@ function dateKeyFromValue(value) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const POLL_MS = 5000;
+const POLL_MS = 30000;
 const EXTERNAL_STORE_ID = '__external__';
 
 function captainLabel(captains, captainId) {
@@ -298,7 +298,7 @@ export default function Orders({ user }) {
   const [activeTab, setActiveTab] = useState('all');
   const [dateFilter, setDateFilter] = useState('day');
   const [filterDate, setFilterDate] = useState(todayKey());
-  const [liveUpdates, setLiveUpdates] = useState(true);
+  const [liveUpdates, setLiveUpdates] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [invoicePreview, setInvoicePreview] = useState({ open: false, order: null });
   const fieldSnapshot = useRef({});

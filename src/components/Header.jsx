@@ -69,7 +69,8 @@ export default function Header({ user, onMenuClick, onLogout }) {
     }
 
     const refreshChatUnread = async () => {
-      const threads = await api.getChatThreads();
+      if (document.visibilityState !== 'visible') return;
+      const threads = await api.getChatUnreadSummary();
       const list = threads || [];
 
       const unreadThreads = list.filter((thread) => Number(thread.unread_count) > 0);
@@ -92,7 +93,7 @@ export default function Header({ user, onMenuClick, onLogout }) {
     };
 
     refreshChatUnread().catch(() => {});
-    const timer = setInterval(() => refreshChatUnread().catch(() => {}), 20000);
+    const timer = setInterval(() => refreshChatUnread().catch(() => {}), 60000);
     return () => clearInterval(timer);
   }, [canOpenChat, location.pathname, navigate, pushNotification]);
 

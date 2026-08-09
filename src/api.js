@@ -27,10 +27,17 @@ export function mediaUrl(path) {
   return API_ORIGIN ? `${API_ORIGIN}${path}` : path;
 }
 
-async function request(path, options = {}) {
+async function request(path, options = {}, attempt = 0) {
   const res = await fetch(`${BASE}${path}`, options);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if ((res.status === 429 || res.status === 503) && attempt < 2) {
+      const waitMs = res.status === 429
+        ? Math.min((Number(data.retry_after) || 2) * 1000, 5000)
+        : 1500 * (attempt + 1);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      return request(path, options, attempt + 1);
+    }
     const err = new Error(data.error || 'حدث خطأ');
     err.status = res.status;
     err.retryAfter = data.retry_after;
@@ -303,6 +310,7 @@ export const api = {
   }),
   getOrderInvoices: (orderId) => request(`/orders/${orderId}/invoices`),
   getChatThreads: () => request('/chat/threads'),
+  getChatUnreadSummary: () => request('/chat/unread-summary'),
   getChatMessages: (captainId) => request(`/chat/${captainId}`),
   markChatRead: (captainId) => request(`/chat/${captainId}/read`, { method: 'POST' }),
   sendChatMessage: async (captainId, { message, sender_id, sender_name, file } = {}) => {

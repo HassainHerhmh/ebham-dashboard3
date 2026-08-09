@@ -133,14 +133,18 @@ export default function Chat({ user }) {
 
   useEffect(() => {
     loadThreads().catch(() => {});
-    const timer = setInterval(() => loadThreads().catch(() => {}), 15000);
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') loadThreads().catch(() => {});
+    }, 30000);
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
     loadMessages(captainId).catch(() => {});
     if (!captainId) return undefined;
-    const timer = setInterval(() => loadMessages(captainId).catch(() => {}), 5000);
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') loadMessages(captainId).catch(() => {});
+    }, 10000);
     return () => clearInterval(timer);
   }, [captainId]);
 
