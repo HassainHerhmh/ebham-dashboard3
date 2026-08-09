@@ -16,8 +16,8 @@ export default defineConfig({
     strictPort: true,
     open: false,
     proxy: {
-      '/api': 'https://working-hours-production.up.railway.app',
-      '/uploads': 'https://working-hours-production.up.railway.app'
+      '/api': 'https://royalblue-loris-417874.hostingersite.com',
+      '/uploads': 'https://royalblue-loris-417874.hostingersite.com'
     }
   }
 });

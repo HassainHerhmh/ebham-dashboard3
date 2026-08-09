@@ -283,7 +283,14 @@ export const api = {
     return request(`/reports/account-statement?${params}`);
   },
   listOrderCustomers: (q = '') => request(`/orders/customers?q=${encodeURIComponent(q)}`),
-  listOrders: (status) => request(`/orders${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  listOrders: ({ status, period, date } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (period) params.set('period', period);
+    if (date) params.set('date', date);
+    const qs = params.toString();
+    return request(`/orders${qs ? `?${qs}` : ''}`);
+  },
   createOrder: (data) => request('/orders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -335,7 +335,7 @@ export default function Orders({ user }) {
 
   const load = async () => {
     const [ordersRows, captainsRows, storesRows, customerRows] = await Promise.all([
-      api.listOrders(),
+      api.listOrders({ period: dateFilter, date: filterDate }),
       api.getCaptains(),
       api.getFinanceStores(),
       api.listOrderCustomers(''),
@@ -353,7 +353,7 @@ export default function Orders({ user }) {
   const refreshOrdersSilent = useCallback(async () => {
     if (savingIdRef.current || orderModal.open) return;
     try {
-      const ordersRows = await api.listOrders();
+      const ordersRows = await api.listOrders({ period: dateFilter, date: filterDate });
       const withNumbers = (ordersRows || []).map((order, index) => ({ ...order, display_number: index + 1 }));
 
       for (const next of withNumbers) {
@@ -377,7 +377,7 @@ export default function Orders({ user }) {
     } catch {
       // تجاهل أخطاء التحديث الخلفي
     }
-  }, [orderModal.open, captains, pushNotification]);
+  }, [orderModal.open, captains, pushNotification, dateFilter, filterDate]);
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
@@ -392,7 +392,7 @@ export default function Orders({ user }) {
 
   useEffect(() => {
     load().catch(() => notify('تعذر تحميل صفحة الطلبات', 'error'));
-  }, []);
+  }, [dateFilter, filterDate]);
 
   useEffect(() => {
     if (!msg) return;
@@ -410,21 +410,7 @@ export default function Orders({ user }) {
     return () => clearInterval(timer);
   }, [liveUpdates, refreshOrdersSilent]);
 
-  const filteredByDate = useMemo(() => {
-    const now = new Date();
-    if (dateFilter === 'all') return orders;
-    if (dateFilter === 'day' || dateFilter === 'today') {
-      const selectedKey = dateKeyFromValue(filterDate) || todayKey();
-      return orders.filter(o => {
-        const key = dateKeyFromValue(o.created_at);
-        return key === selectedKey;
-      });
-    }
-    return orders.filter(o => {
-      const d = new Date(o.created_at);
-      return !Number.isNaN(d.getTime()) && (now.getTime() - d.getTime()) <= 7 * 24 * 60 * 60 * 1000;
-    });
-  }, [orders, dateFilter, filterDate]);
+  const filteredByDate = useMemo(() => orders, [orders]);
 
   const statusCounts = useMemo(() => {
     const counts = { all: filteredByDate.length };
