@@ -92,7 +92,7 @@ export default function Header({ user, onMenuClick, onLogout }) {
     };
 
     refreshChatUnread().catch(() => {});
-    const timer = setInterval(() => refreshChatUnread().catch(() => {}), 5000);
+    const timer = setInterval(() => refreshChatUnread().catch(() => {}), 20000);
     return () => clearInterval(timer);
   }, [canOpenChat, location.pathname, navigate, pushNotification]);
 
