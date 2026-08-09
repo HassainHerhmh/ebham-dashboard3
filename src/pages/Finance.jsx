@@ -121,10 +121,10 @@ export default function Finance() {
 
   const loadAllVouchers = () => api.getFinanceVouchers().then(setAllVouchers).catch(() => setAllVouchers([]));
 
-  const loadStores = () => api.getFinanceStores().then(setStores);
+  const loadStores = () => api.getFinanceStores().then(setStores).catch(() => setStores([]));
   const loadPostings = () => api.getInvoicePostings().then(setPostings).catch(() => setPostings([]));
   const loadCommissionPostings = () => api.getCommissionPostings().then(setCommissionPostings).catch(() => setCommissionPostings([]));
-  const loadCaptains = () => api.getCaptains().then(setCaptains);
+  const loadCaptains = () => api.getCaptains().then(setCaptains).catch(() => setCaptains([]));
 
   const emptyInvoices = () => Object.fromEntries(stores.map(s => [s.id, ['']]));
 
@@ -137,7 +137,7 @@ export default function Finance() {
 
   const fillModalInvoiceForm = (data) => {
     const invMap = emptyInvoices();
-    const lines = data?.invoices || [];
+    const lines = Array.isArray(data?.invoices) ? data.invoices : [];
     for (const inv of lines) {
       if (inv.order_id) continue;
       const amount = Number(inv.amount) || 0;

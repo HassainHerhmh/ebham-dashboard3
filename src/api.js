@@ -2,6 +2,20 @@ const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const BASE = API_ORIGIN ? `${API_ORIGIN}/api` : '/api';
 const USER_KEY = 'platform_user';
 
+export function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function invalidApiResponseError(status) {
+  const err = new Error(
+    API_ORIGIN
+      ? 'استجابة غير صالحة من الخادم'
+      : 'VITE_API_URL غير مضبوط — أضف رابط Hostinger في Vercel ثم Redeploy'
+  );
+  err.status = status;
+  return err;
+}
+
 export function getStoredUser() {
   try {
     const raw = localStorage.getItem(USER_KEY);
@@ -29,7 +43,20 @@ export function mediaUrl(path) {
 
 async function request(path, options = {}, attempt = 0) {
   const res = await fetch(`${BASE}${path}`, options);
-  const data = await res.json().catch(() => ({}));
+  const contentType = res.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await res.json().catch(() => null)
+    : null;
+
+  if (!contentType.includes('application/json') || data === null) {
+    if ((res.status === 429 || res.status === 503) && attempt < 2) {
+      const waitMs = 1500 * (attempt + 1);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      return request(path, options, attempt + 1);
+    }
+    throw invalidApiResponseError(res.status);
+  }
+
   if (!res.ok) {
     if ((res.status === 429 || res.status === 503) && attempt < 2) {
       const waitMs = res.status === 429
@@ -53,7 +80,7 @@ export const api = {
     body: JSON.stringify({ username, password, website })
   }),
 
-  getUsers: () => request('/users'),
+  getUsers: () => request('/users').then(ensureArray),
   createUser: (formData) => request('/users', { method: 'POST', body: formData }),
   updateUser: (id, formData) => request(`/users/${id}`, { method: 'PUT', body: formData }),
   toggleUserStatus: (id) => request(`/users/${id}/status`, { method: 'PATCH' }),
@@ -70,7 +97,7 @@ export const api = {
     body: JSON.stringify(data),
   }),
 
-  getCaptains: () => request('/captains'),
+  getCaptains: () => request('/captains').then(ensureArray),
   getCaptain: (id) => request(`/captains/${id}`),
   createCaptain: (formData) => request('/captains', { method: 'POST', body: formData }),
   updateCaptain: (id, formData) => request(`/captains/${id}`, { method: 'PUT', body: formData }),
@@ -81,7 +108,7 @@ export const api = {
   }),
   deleteCaptain: (id) => request(`/captains/${id}`, { method: 'DELETE' }),
 
-  getCaptainGroups: () => request('/captain-groups'),
+  getCaptainGroups: () => request('/captain-groups').then(ensureArray),
   createCaptainGroup: (name) => request('/captain-groups', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -94,14 +121,14 @@ export const api = {
   }),
   deleteCaptainGroup: (id) => request(`/captain-groups/${id}`, { method: 'DELETE' }),
 
-  getShifts: (captainId) => request(`/shifts${captainId ? `?captain_id=${captainId}` : ''}`),
+  getShifts: (captainId) => request(`/shifts${captainId ? `?captain_id=${captainId}` : ''}`).then(ensureArray),
   saveShifts: (captainId, shifts) => request(`/shifts/captain/${captainId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ shifts })
   }),
 
-  getMessages: () => request('/sms/messages'),
+  getMessages: () => request('/sms/messages').then(ensureArray),
   createMessage: (data) => request('/sms/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -119,7 +146,7 @@ export const api = {
     body: JSON.stringify({ message_id: messageId })
   }),
 
-  getSmsLog: (limit = 50) => request(`/sms/log?limit=${limit}`),
+  getSmsLog: (limit = 50) => request(`/sms/log?limit=${limit}`).then(ensureArray),
   getGatewayStatus: () => request('/sms/gateway-status'),
 
   getShiftReminder: () => request('/sms/shift-reminder'),
@@ -166,7 +193,7 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
-  getFinanceStores: () => request('/finance/stores'),
+  getFinanceStores: () => request('/finance/stores').then(ensureArray),
   createFinanceStore: (name, discount_percent = 0) => request('/finance/stores', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -178,7 +205,7 @@ export const api = {
     body: JSON.stringify(payload),
   }),
   deleteFinanceStore: (id) => request(`/finance/stores/${id}`, { method: 'DELETE' }),
-  getFinanceDiscounts: () => request('/finance/discounts'),
+  getFinanceDiscounts: () => request('/finance/discounts').then(ensureArray),
   createFinanceDiscount: (data) => request('/finance/discounts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -206,7 +233,7 @@ export const api = {
   getCaptainVouchers: (captainId) => request(`/finance/captain/${captainId}/vouchers`),
   getFinanceVouchers: (captainId) => {
     const qs = captainId ? `?captain_id=${captainId}` : '';
-    return request(`/finance/vouchers${qs}`);
+    return request(`/finance/vouchers${qs}`).then(ensureArray);
   },
   createVoucher: (captainId, data) => request(`/finance/captain/${captainId}/vouchers`, {
     method: 'POST',
@@ -229,14 +256,14 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
-  getInvoicePostings: () => request('/finance/invoice-postings'),
+  getInvoicePostings: () => request('/finance/invoice-postings').then(ensureArray),
   deleteInvoicePosting: (id) => request(`/finance/invoice-postings/${id}`, { method: 'DELETE' }),
   saveCaptainCommission: (captainId, data) => request(`/finance/captain/${captainId}/commission`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
-  getCommissionPostings: () => request('/finance/commission-postings'),
+  getCommissionPostings: () => request('/finance/commission-postings').then(ensureArray),
   deleteCommissionPosting: (id) => request(`/finance/commission-postings/${id}`, { method: 'DELETE' }),
   getSalesReport: ({ period = 'day', date, from, to, captain_id } = {}) => {
     const params = new URLSearchParams({ period });
@@ -289,14 +316,14 @@ export const api = {
     if (include_opening === false) params.set('include_opening', 'false');
     return request(`/reports/account-statement?${params}`);
   },
-  listOrderCustomers: (q = '') => request(`/orders/customers?q=${encodeURIComponent(q)}`),
+  listOrderCustomers: (q = '') => request(`/orders/customers?q=${encodeURIComponent(q)}`).then(ensureArray),
   listOrders: ({ status, period, date } = {}) => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
     if (period) params.set('period', period);
     if (date) params.set('date', date);
     const qs = params.toString();
-    return request(`/orders${qs ? `?${qs}` : ''}`);
+    return request(`/orders${qs ? `?${qs}` : ''}`).then(ensureArray);
   },
   createOrder: (data) => request('/orders', {
     method: 'POST',
@@ -309,9 +336,9 @@ export const api = {
     body: JSON.stringify(data),
   }),
   getOrderInvoices: (orderId) => request(`/orders/${orderId}/invoices`),
-  getChatThreads: () => request('/chat/threads'),
-  getChatUnreadSummary: () => request('/chat/unread-summary'),
-  getChatMessages: (captainId) => request(`/chat/${captainId}`),
+  getChatThreads: () => request('/chat/threads').then(ensureArray),
+  getChatUnreadSummary: () => request('/chat/unread-summary').then(ensureArray),
+  getChatMessages: (captainId) => request(`/chat/${captainId}`).then(ensureArray),
   markChatRead: (captainId) => request(`/chat/${captainId}/read`, { method: 'POST' }),
   sendChatMessage: async (captainId, { message, sender_id, sender_name, file } = {}) => {
     const form = new FormData();

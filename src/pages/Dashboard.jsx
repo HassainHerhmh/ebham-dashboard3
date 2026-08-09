@@ -13,13 +13,13 @@ export default function Dashboard() {
       api.getSmsLog(100)
     ]).then(([captains, users, shifts, messages, logs]) => {
       setStats({
-        captains: captains.length,
-        users: users.length,
-        shifts: shifts.filter(s => s.is_active).length,
-        messages: messages.filter(m => m.is_active).length,
-        sent: logs.length
+        captains: (captains || []).length,
+        users: (users || []).length,
+        shifts: (shifts || []).filter(s => s.is_active).length,
+        messages: (messages || []).filter(m => m.is_active).length,
+        sent: (logs || []).length
       });
-    });
+    }).catch(() => {});
   }, []);
 
   return (
