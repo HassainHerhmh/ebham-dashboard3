@@ -64,9 +64,6 @@ function orderCaptainLabel(order, captains) {
   return 'بدون تعيين';
 }
 
-function isTerminalOrderStatus(status) {
-  return status === 'done' || status === 'cancelled';
-}
 
 function formatOrderTime(value) {
   if (!value) return '';
@@ -290,7 +287,6 @@ export default function Orders({ user }) {
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('info');
   const [orderModal, setOrderModal] = useState({ open: false, mode: 'add', orderId: null });
-  const [editingLocked, setEditingLocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -462,7 +458,6 @@ export default function Orders({ user }) {
 
   const closeOrderModal = () => {
     setOrderModal({ open: false, mode: 'add', orderId: null });
-    setEditingLocked(false);
   };
 
   const openInvoicePreview = (order) => {
@@ -471,7 +466,6 @@ export default function Orders({ user }) {
 
   const openAdd = () => {
     setMsg('');
-    setEditingLocked(false);
     setForm({
       customer_name: '',
       customer_phone: '',
@@ -488,7 +482,6 @@ export default function Orders({ user }) {
 
   const openEdit = (order) => {
     setMsg('');
-    setEditingLocked(isTerminalOrderStatus(order.status));
     setForm(orderToForm(order));
     setOrderModal({ open: true, mode: 'edit', orderId: order.id });
   };
@@ -563,14 +556,12 @@ export default function Orders({ user }) {
       if (orderModal.mode === 'edit') {
         let captain_id = form.captain_id || null;
         let status = form.status;
-        if (!editingLocked) {
-          if (captain_id && (status === 'new' || !status)) status = 'assigned';
-          else if (!captain_id && status === 'assigned') status = 'new';
-        }
+        if (captain_id && (status === 'new' || !status)) status = 'assigned';
+        else if (!captain_id && status === 'assigned') status = 'new';
         await api.updateOrder(orderModal.orderId, {
           ...payload,
-          captain_id: editingLocked ? undefined : captain_id,
-          status: editingLocked ? undefined : status,
+          captain_id,
+          status,
         });
         closeOrderModal();
         await load();
@@ -813,54 +804,42 @@ export default function Orders({ user }) {
                       )}
                     </td>
                     <td className="min-w-[160px]">
-                      {isTerminalOrderStatus(order.status) ? (
-                        <span className="orders-captain-locked">
-                          {orderCaptainLabel(order, captains)}
-                        </span>
-                      ) : (
-                        <select
-                          className="finance-filter-select w-full min-w-0"
-                          value={order.captain_id || ''}
-                          onChange={e => {
-                            const captain_id = e.target.value || null;
-                            let nextStatus = order.status || 'new';
-                            if (captain_id && (nextStatus === 'new' || !nextStatus)) {
-                              nextStatus = 'assigned';
-                            } else if (!captain_id && nextStatus === 'assigned') {
-                              nextStatus = 'new';
-                            }
-                            updateLocalOrder(order.id, { captain_id, status: nextStatus });
-                            saveOrderPatch(order.id, { captain_id, status: nextStatus });
-                          }}
-                        >
-                          <option value="">بدون تعيين</option>
-                          {captains.map(c => (
-                            <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
-                          ))}
-                        </select>
-                      )}
+                      <select
+                        className="finance-filter-select w-full min-w-0"
+                        value={order.captain_id || ''}
+                        onChange={e => {
+                          const captain_id = e.target.value || null;
+                          let nextStatus = order.status || 'new';
+                          if (captain_id && (nextStatus === 'new' || !nextStatus)) {
+                            nextStatus = 'assigned';
+                          } else if (!captain_id && nextStatus === 'assigned') {
+                            nextStatus = 'new';
+                          }
+                          updateLocalOrder(order.id, { captain_id, status: nextStatus });
+                          saveOrderPatch(order.id, { captain_id, status: nextStatus });
+                        }}
+                      >
+                        <option value="">بدون تعيين</option>
+                        {captains.map(c => (
+                          <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="min-w-[130px]">
-                      {isTerminalOrderStatus(order.status) ? (
-                        <span className={`order-status-badge status-${order.status}`}>
-                          {STATUS_LABELS[order.status]}
-                        </span>
-                      ) : (
-                        <select
-                          className="finance-filter-select w-full min-w-0"
-                          value={order.status || 'new'}
-                          disabled={savingId === order.id}
-                          onChange={e => {
-                            const status = e.target.value;
-                            updateLocalOrder(order.id, { status });
-                            saveOrderPatch(order.id, { status });
-                          }}
-                        >
-                          {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                            <option key={key} value={key}>{label}</option>
-                          ))}
-                        </select>
-                      )}
+                      <select
+                        className="finance-filter-select w-full min-w-0"
+                        value={order.status || 'new'}
+                        disabled={savingId === order.id}
+                        onChange={e => {
+                          const status = e.target.value;
+                          updateLocalOrder(order.id, { status });
+                          saveOrderPatch(order.id, { status });
+                        }}
+                      >
+                        {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                          <option key={key} value={key}>{label}</option>
+                        ))}
+                      </select>
                       {savingId === order.id && <div className="orders-saving-hint">جاري التحديث...</div>}
                     </td>
                     <td className="min-w-[120px]">
@@ -1035,7 +1014,6 @@ export default function Orders({ user }) {
                     <label>الكابتن</label>
                     <select
                       value={form.captain_id}
-                      disabled={editingLocked}
                       onChange={e => setForm({ ...form, captain_id: e.target.value })}
                     >
                       <option value="">بدون تعيين</option>
@@ -1048,7 +1026,6 @@ export default function Orders({ user }) {
                     <label>الحالة</label>
                     <select
                       value={form.status}
-                      disabled={editingLocked}
                       onChange={e => setForm({ ...form, status: e.target.value })}
                     >
                       {Object.entries(STATUS_LABELS).map(([key, label]) => (
@@ -1056,13 +1033,6 @@ export default function Orders({ user }) {
                       ))}
                     </select>
                   </div>
-                  {editingLocked && (
-                    <div className="form-group flex items-end">
-                      <p className="text-sm text-amber-700 dark:text-amber-300">
-                        الطلب مكتمل/ملغي — لا يمكن تغيير الكابتن أو الحالة
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
 
