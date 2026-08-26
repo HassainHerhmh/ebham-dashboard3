@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   Wallet,
   ShoppingCart,
+  ContactRound,
   BarChart3,
   Percent,
   FileText,
@@ -30,6 +31,7 @@ const MENU = [
   { path: '/finance', label: 'الماليات', icon: Wallet, section: 'finance' },
   { path: '/discounts', label: 'إعداد الخصومات', icon: Percent, section: 'discounts' },
   { path: '/orders', label: 'الطلبات', icon: ShoppingCart, section: 'orders' },
+  { path: '/customers', label: 'العملاء', icon: ContactRound, section: 'orders' },
 ];
 
 const REPORTS_MENU = [

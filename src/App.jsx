@@ -15,6 +15,7 @@ import Attendance from './pages/Attendance';
 import Finance from './pages/Finance';
 import Discounts from './pages/Discounts';
 import Orders from './pages/Orders';
+import Customers from './pages/Customers';
 import ReportsAttendance from './pages/ReportsAttendance';
 import ReportsSales from './pages/ReportsSales';
 import ReportsCommissions from './pages/ReportsCommissions';
@@ -93,6 +94,7 @@ export default function App() {
                 <Route path="/finance" element={<ProtectedRoute user={user} section="finance"><Finance /></ProtectedRoute>} />
                 <Route path="/discounts" element={<ProtectedRoute user={user} section="discounts"><Discounts /></ProtectedRoute>} />
                 <Route path="/orders" element={<ProtectedRoute user={user} section="orders"><Orders user={user} /></ProtectedRoute>} />
+                <Route path="/customers" element={<ProtectedRoute user={user} section="orders"><Customers user={user} /></ProtectedRoute>} />
                 <Route path="/reports/attendance" element={<ProtectedRoute user={user} section="reports_attendance"><ReportsAttendance /></ProtectedRoute>} />
                 <Route path="/reports/sales" element={<ProtectedRoute user={user} section="reports_sales"><ReportsSales /></ProtectedRoute>} />
                 <Route path="/reports/commissions" element={<ProtectedRoute user={user} section="reports_commissions"><ReportsCommissions /></ProtectedRoute>} />

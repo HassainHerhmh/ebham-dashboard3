@@ -789,19 +789,35 @@ export default function Orders({ user }) {
                         placeholder="عنوان العميل"
                       />
                     </td>
-                    <td className="min-w-[80px] text-center">
-                      {order.map_link ? (
-                        <a
-                          className="btn btn-secondary btn-sm"
-                          href={order.map_link}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          GPS
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 text-sm">—</span>
-                      )}
+                    <td className="min-w-[140px]">
+                      <div className="flex items-center gap-1">
+                        <input
+                          className="orders-table-input flex-1 min-w-0"
+                          value={order.map_link || ''}
+                          onFocus={e => rememberField(order.id, 'map_link', e.target.value)}
+                          onChange={e => updateLocalOrder(order.id, { map_link: e.target.value })}
+                          onBlur={e => {
+                            const value = e.target.value.trim();
+                            if (fieldChanged(order.id, 'map_link', value)) {
+                              saveOrderPatch(order.id, { map_link: value });
+                            } else {
+                              clearFieldSnapshot(order.id, 'map_link');
+                            }
+                          }}
+                          placeholder="رابط GPS"
+                        />
+                        {order.map_link ? (
+                          <a
+                            className="btn btn-secondary btn-sm shrink-0"
+                            href={order.map_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="فتح الموقع"
+                          >
+                            GPS
+                          </a>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="min-w-[160px]">
                       <select

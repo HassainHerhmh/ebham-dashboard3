@@ -317,6 +317,12 @@ export const api = {
     return request(`/reports/account-statement?${params}`);
   },
   listOrderCustomers: (q = '') => request(`/orders/customers?q=${encodeURIComponent(q)}`).then(ensureArray),
+  listCustomers: (q = '') => request(`/customers?q=${encodeURIComponent(q)}`).then(ensureArray),
+  updateCustomer: (id, data) => request(`/customers/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
   listOrders: ({ status, period, date } = {}) => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
