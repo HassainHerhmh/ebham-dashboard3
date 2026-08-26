@@ -11,13 +11,14 @@ import {
   ClipboardCheck,
   Wallet,
   ShoppingCart,
-  ContactRound,
+  UserCircle,
   BarChart3,
   Percent,
   FileText,
   ChevronDown,
   PanelRightClose,
   PanelRightOpen,
+  HardDrive,
 } from 'lucide-react';
 import { hasPermission } from '../utils/permissions';
 
@@ -31,7 +32,7 @@ const MENU = [
   { path: '/finance', label: 'الماليات', icon: Wallet, section: 'finance' },
   { path: '/discounts', label: 'إعداد الخصومات', icon: Percent, section: 'discounts' },
   { path: '/orders', label: 'الطلبات', icon: ShoppingCart, section: 'orders' },
-  { path: '/customers', label: 'العملاء', icon: ContactRound, section: 'orders' },
+  { path: '/customers', label: 'العملاء', icon: UserCircle, section: 'orders' },
 ];
 
 const REPORTS_MENU = [
@@ -56,7 +57,8 @@ export default function Sidebar({ isOpen, onClose, user }) {
   const visibleReports = REPORTS_MENU.filter((item) => canShow(item.section));
   const showUsers = canShow('users');
   const showUserPermissions = canShow('user_permissions');
-  const showUsersGroup = showUsers || showUserPermissions;
+  const showBackup = canShow('backup');
+  const showUsersGroup = showUsers || showUserPermissions || showBackup;
 
   const linkBase = `flex items-center ${collapsed ? 'justify-center' : 'gap-3'} rounded-lg px-4 py-2.5 text-slate-600 dark:text-gray-300 hover:bg-blue-50/80 dark:hover:bg-gray-700 transition-all`;
   const activeClass = 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-semibold shadow-sm border border-blue-100/80 dark:border-blue-800/40';
@@ -120,6 +122,18 @@ export default function Sidebar({ isOpen, onClose, user }) {
                 >
                   <ShieldCheck size={16} />
                   <span>الصلاحيات</span>
+                </Link>
+              )}
+
+              {showBackup && (
+                <Link
+                  to="/backup"
+                  onClick={onClose}
+                  className={`${linkBase} ${location.pathname === '/backup' ? activeClass : ''}`}
+                  title={collapsed ? 'النسخ الاحتياطي' : undefined}
+                >
+                  <HardDrive size={18} />
+                  {!collapsed && <span>النسخ الاحتياطي</span>}
                 </Link>
               )}
             </div>
