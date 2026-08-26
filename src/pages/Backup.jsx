@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Download, HardDrive, RefreshCw } from 'lucide-react';
+import {
+  ChevronLeft,
+  Download,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  HardDrive,
+  RefreshCw,
+} from 'lucide-react';
 import { api, mediaUrl } from '../api';
 import { hasPermission } from '../utils/permissions';
 
@@ -36,6 +44,12 @@ export default function Backup({ user }) {
   const [running, setRunning] = useState(false);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseError, setBrowseError] = useState('');
+  const [browseData, setBrowseData] = useState(null);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -58,9 +72,54 @@ export default function Backup({ user }) {
     }
   };
 
+  const loadBrowse = async (pathValue = '') => {
+    setBrowseLoading(true);
+    setBrowseError('');
+    try {
+      const data = await api.browseBackupPath(pathValue);
+      setBrowseData(data);
+    } catch (err) {
+      setBrowseError(err.message || 'تعذر عرض المجلدات');
+    } finally {
+      setBrowseLoading(false);
+    }
+  };
+
   useEffect(() => {
     load();
   }, []);
+
+  const openPicker = async () => {
+    setPickerOpen(true);
+    setNewFolderName('');
+    await loadBrowse(config.resolved_path || config.backup_path || '');
+  };
+
+  const handleSelectCurrentFolder = () => {
+    if (!browseData?.stored_path) return;
+    setConfig((prev) => ({
+      ...prev,
+      backup_path: browseData.stored_path,
+      resolved_path: browseData.current_path,
+    }));
+    setPickerOpen(false);
+  };
+
+  const handleCreateFolder = async () => {
+    if (!browseData?.current_path || !newFolderName.trim()) return;
+    setCreatingFolder(true);
+    setBrowseError('');
+    try {
+      const data = await api.createBackupFolder(browseData.current_path, newFolderName.trim());
+      setBrowseData(data);
+      setNewFolderName('');
+      setMsg('تم إنشاء المجلد');
+    } catch (err) {
+      setBrowseError(err.message || 'تعذر إنشاء المجلد');
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -154,12 +213,20 @@ export default function Backup({ user }) {
             <div className="form-row">
               <div className="form-group flex-1">
                 <label>مسار حفظ النسخ</label>
-                <input
-                  value={config.backup_path || './backups'}
-                  disabled={!canEdit}
-                  onChange={(e) => setConfig({ ...config, backup_path: e.target.value })}
-                  placeholder="./backups أو مسار مطلق على السيرفر"
-                />
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    className="flex-1 min-w-[220px]"
+                    value={config.backup_path || './backups'}
+                    readOnly
+                    placeholder="اختر مجلد الحفظ"
+                  />
+                  {canEdit && (
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={openPicker}>
+                      <FolderOpen size={14} />
+                      اختيار المسار
+                    </button>
+                  )}
+                </div>
                 <span className="text-xs text-gray-500">
                   المسار الفعلي: {config.resolved_path || '—'}
                 </span>
@@ -254,6 +321,118 @@ export default function Backup({ user }) {
           </div>
         )}
       </div>
+
+      {pickerOpen && (
+        <div className="modal-overlay" onClick={() => setPickerOpen(false)}>
+          <div className="modal card max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="flex items-center gap-2">
+              <FolderOpen size={18} />
+              اختيار مجلد النسخ الاحتياطي
+            </h3>
+
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {(browseData?.roots || []).map((root) => (
+                  <button
+                    key={root.path}
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => loadBrowse(root.path)}
+                  >
+                    {root.label}
+                  </button>
+                ))}
+                {browseData?.parent_path && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm inline-flex items-center gap-1"
+                    onClick={() => loadBrowse(browseData.parent_path)}
+                  >
+                    <ChevronLeft size={14} />
+                    رجوع
+                  </button>
+                )}
+              </div>
+
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 text-sm break-all">
+                <strong>المجلد الحالي:</strong> {browseData?.current_path || '—'}
+              </div>
+
+              {canEdit && (
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    className="flex-1 min-w-[180px]"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder="اسم مجلد جديد"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm inline-flex items-center gap-1"
+                    onClick={handleCreateFolder}
+                    disabled={creatingFolder || !newFolderName.trim()}
+                  >
+                    <FolderPlus size={14} />
+                    {creatingFolder ? 'جاري الإنشاء...' : 'مجلد جديد'}
+                  </button>
+                </div>
+              )}
+
+              {browseError && <p className="text-sm text-red-600">{browseError}</p>}
+
+              <div className="border rounded-lg overflow-hidden max-h-[360px] overflow-y-auto">
+                {browseLoading ? (
+                  <div className="empty-state">جاري عرض الملفات...</div>
+                ) : (browseData?.entries || []).length === 0 ? (
+                  <div className="empty-state">المجلد فارغ</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>الاسم</th>
+                        <th>النوع</th>
+                        <th>الحجم</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(browseData?.entries || []).map((entry) => (
+                        <tr
+                          key={entry.path}
+                          className={entry.type === 'directory' ? 'cursor-pointer hover:bg-blue-50/60 dark:hover:bg-gray-700/40' : ''}
+                          onClick={() => {
+                            if (entry.type === 'directory') loadBrowse(entry.path);
+                          }}
+                        >
+                          <td className="font-medium inline-flex items-center gap-2">
+                            {entry.type === 'directory' ? <Folder size={14} /> : <HardDrive size={14} />}
+                            {entry.name}
+                          </td>
+                          <td>{entry.type === 'directory' ? 'مجلد' : 'ملف'}</td>
+                          <td>{entry.type === 'file' ? formatBytes(entry.size_bytes) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button type="button" className="btn btn-secondary" onClick={() => setPickerOpen(false)}>
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={!browseData?.stored_path}
+                  onClick={handleSelectCurrentFolder}
+                >
+                  اختيار هذا المجلد
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

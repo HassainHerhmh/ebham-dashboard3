@@ -118,6 +118,7 @@ export default function Customers({ user }) {
             <table>
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>العميل</th>
                   <th>الهاتف</th>
                   <th>العنوان</th>
@@ -127,8 +128,9 @@ export default function Customers({ user }) {
                 </tr>
               </thead>
               <tbody>
-                {visibleCustomers.map((row) => (
+                {visibleCustomers.map((row, index) => (
                   <tr key={row.id}>
+                    <td className="text-gray-500 font-medium">{index + 1}</td>
                     <td className="font-medium">{row.name || '—'}</td>
                     <td>{row.phone || '—'}</td>
                     <td className="min-w-[180px]">{row.address_text || '—'}</td>

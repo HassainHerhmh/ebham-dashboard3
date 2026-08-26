@@ -324,6 +324,17 @@ export const api = {
     body: JSON.stringify(data),
   }),
   getBackupConfig: () => request('/backup/config'),
+  browseBackupPath: (pathValue = '') => {
+    const params = new URLSearchParams();
+    if (pathValue) params.set('path', pathValue);
+    const qs = params.toString();
+    return request(`/backup/browse${qs ? `?${qs}` : ''}`);
+  },
+  createBackupFolder: (parentPath, folderName) => request('/backup/browse/mkdir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ parent_path: parentPath, folder_name: folderName }),
+  }),
   saveBackupConfig: (data) => request('/backup/config', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
