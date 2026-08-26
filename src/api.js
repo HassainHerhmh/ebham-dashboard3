@@ -323,6 +323,14 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }),
+  getBackupConfig: () => request('/backup/config'),
+  saveBackupConfig: (data) => request('/backup/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
+  getBackupHistory: (limit = 20) => request(`/backup/history?limit=${encodeURIComponent(limit)}`).then(ensureArray),
+  runBackupNow: () => request('/backup/run-now', { method: 'POST' }),
   listOrders: ({ status, period, date } = {}) => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);

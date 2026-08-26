@@ -121,6 +121,7 @@ export default function Customers({ user }) {
                   <th>العميل</th>
                   <th>الهاتف</th>
                   <th>العنوان</th>
+                  <th>عدد الطلبات</th>
                   <th>رابط GPS</th>
                   <th>الإجراءات</th>
                 </tr>
@@ -131,6 +132,7 @@ export default function Customers({ user }) {
                     <td className="font-medium">{row.name || '—'}</td>
                     <td>{row.phone || '—'}</td>
                     <td className="min-w-[180px]">{row.address_text || '—'}</td>
+                    <td className="text-center font-semibold">{row.order_count ?? 0}</td>
                     <td className="min-w-[160px]">
                       {row.map_link ? (
                         <a

@@ -20,6 +20,7 @@ export const permissionGroups = [
       { key: 'dashboard', label: 'لوحة التحكم', path: '/' },
       { key: 'users', label: 'المستخدمين', path: '/users' },
       { key: 'user_permissions', label: 'الصلاحيات', path: '/users/permissions' },
+      { key: 'backup', label: 'النسخ الاحتياطي', path: '/backup' },
     ],
   },
   {
