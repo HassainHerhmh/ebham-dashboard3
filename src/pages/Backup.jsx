@@ -10,6 +10,13 @@ import {
 } from 'lucide-react';
 import { api, mediaUrl } from '../api';
 import { hasPermission } from '../utils/permissions';
+import {
+  getLocalBackupFolder,
+  pickNativeBackupFolder,
+  saveBackupFileToLocalFolder,
+  supportsNativeFolderPicker,
+  clearLocalBackupFolder,
+} from '../utils/localBackupFolder';
 
 function formatBytes(bytes) {
   const value = Number(bytes || 0);
@@ -50,6 +57,8 @@ export default function Backup({ user }) {
   const [browseData, setBrowseData] = useState(null);
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [localFolderName, setLocalFolderName] = useState('');
+  const [pickingLocal, setPickingLocal] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -87,12 +96,43 @@ export default function Backup({ user }) {
 
   useEffect(() => {
     load();
+    getLocalBackupFolder()
+      .then((handle) => setLocalFolderName(handle?.name || ''))
+      .catch(() => {});
   }, []);
 
-  const openPicker = async () => {
+  const openLocalPicker = async () => {
+    if (!canEdit) return;
+    setPickingLocal(true);
+    setError('');
+    try {
+      if (!supportsNativeFolderPicker()) {
+        setPickerOpen(true);
+        setNewFolderName('');
+        await loadBrowse('__drives__');
+        return;
+      }
+      const handle = await pickNativeBackupFolder();
+      setLocalFolderName(handle.name);
+      setMsg(`تم اختيار مجلد Windows: ${handle.name}`);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      setError(err.message || 'تعذر اختيار مجلد Windows');
+    } finally {
+      setPickingLocal(false);
+    }
+  };
+
+  const openServerPicker = async () => {
     setPickerOpen(true);
     setNewFolderName('');
-    await loadBrowse(config.resolved_path || config.backup_path || '');
+    await loadBrowse(config.resolved_path || config.backup_path || '__drives__');
+  };
+
+  const clearLocalFolder = async () => {
+    await clearLocalBackupFolder();
+    setLocalFolderName('');
+    setMsg('تم إلغاء مجلد Windows');
   };
 
   const handleSelectCurrentFolder = () => {
@@ -155,11 +195,21 @@ export default function Backup({ user }) {
     setError('');
     try {
       const result = await api.runBackupNow();
-      if (result.skipped) {
-        setMsg('تم إنشاء نسخة اليوم مسبقاً');
-      } else {
-        setMsg(`تم إنشاء النسخة: ${result.file_name}`);
+      let message = result.skipped
+        ? 'تم إنشاء نسخة اليوم مسبقاً'
+        : `تم إنشاء النسخة على السيرفر: ${result.file_name}`;
+
+      const localHandle = await getLocalBackupFolder();
+      if (localHandle && result.file_name) {
+        const url = mediaUrl(`/api/backup/download/${encodeURIComponent(result.file_name)}`);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('تعذر تحميل النسخة لحفظها على Windows');
+        const blob = await response.blob();
+        await saveBackupFileToLocalFolder(localHandle, result.file_name, blob);
+        message = `${message} — وتم حفظها في مجلد Windows "${localHandle.name}"`;
       }
+
+      setMsg(message);
       await load();
     } catch (err) {
       setError(err.message || 'تعذر إنشاء النسخة الاحتياطية');
@@ -212,23 +262,60 @@ export default function Backup({ user }) {
           <form onSubmit={handleSave} className="space-y-4">
             <div className="form-row">
               <div className="form-group flex-1">
-                <label>مسار حفظ النسخ</label>
+                <label>مسار حفظ النسخ على جهازك (Windows)</label>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    className="flex-1 min-w-[220px]"
+                    value={localFolderName ? `مجلد Windows: ${localFolderName}` : 'لم يتم اختيار مجلد بعد'}
+                    readOnly
+                    placeholder="اختر قرص أو مجلد من جهازك"
+                  />
+                  {canEdit && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={openLocalPicker}
+                        disabled={pickingLocal}
+                      >
+                        <FolderOpen size={14} />
+                        {pickingLocal ? 'جاري الفتح...' : 'اختيار المسار'}
+                      </button>
+                      {localFolderName && (
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={clearLocalFolder}>
+                          إزالة
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500">
+                  {supportsNativeFolderPicker()
+                    ? 'يفتح نافذة Windows لاختيار القرص أو أي مجلد — يُستخدم عند الضغط على "نسخ الآن"'
+                    : 'المتصفح الحالي لا يدعم اختيار مجلد Windows — استخدم Chrome أو Edge'}
+                </span>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group flex-1">
+                <label>مسار النسخ التلقائي على السيرفر</label>
                 <div className="flex flex-wrap gap-2">
                   <input
                     className="flex-1 min-w-[220px]"
                     value={config.backup_path || './backups'}
                     readOnly
-                    placeholder="اختر مجلد الحفظ"
+                    placeholder="مسار السيرفر"
                   />
                   {canEdit && (
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={openPicker}>
-                      <FolderOpen size={14} />
-                      اختيار المسار
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={openServerPicker}>
+                      <HardDrive size={14} />
+                      استعراض السيرفر
                     </button>
                   )}
                 </div>
                 <span className="text-xs text-gray-500">
-                  المسار الفعلي: {config.resolved_path || '—'}
+                  المسار الفعلي على السيرفر: {config.resolved_path || '—'} — يُستخدم للنسخ اليومي الساعة 9 مساءً
                 </span>
               </div>
               <div className="form-group">
@@ -326,8 +413,8 @@ export default function Backup({ user }) {
         <div className="modal-overlay" onClick={() => setPickerOpen(false)}>
           <div className="modal card max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="flex items-center gap-2">
-              <FolderOpen size={18} />
-              اختيار مجلد النسخ الاحتياطي
+              <HardDrive size={18} />
+              استعراض مسارات السيرفر
             </h3>
 
             <div className="mt-4 space-y-3">
@@ -349,16 +436,17 @@ export default function Backup({ user }) {
                     onClick={() => loadBrowse(browseData.parent_path)}
                   >
                     <ChevronLeft size={14} />
-                    رجوع
+                    {browseData.is_drive_root ? 'الأقراص' : 'رجوع'}
                   </button>
                 )}
               </div>
 
               <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 text-sm break-all">
-                <strong>المجلد الحالي:</strong> {browseData?.current_path || '—'}
+                <strong>المجلد الحالي:</strong>{' '}
+                {browseData?.is_drive_root ? 'اختر قرصاً (C: / D: ...)' : (browseData?.current_path || '—')}
               </div>
 
-              {canEdit && (
+              {canEdit && !browseData?.is_drive_root && browseData?.can_create_folder && (
                 <div className="flex flex-wrap gap-2">
                   <input
                     className="flex-1 min-w-[180px]"
@@ -384,7 +472,9 @@ export default function Backup({ user }) {
                 {browseLoading ? (
                   <div className="empty-state">جاري عرض الملفات...</div>
                 ) : (browseData?.entries || []).length === 0 ? (
-                  <div className="empty-state">المجلد فارغ</div>
+                  <div className="empty-state">
+                    {browseData?.is_drive_root ? 'لا توجد أقراص متاحة' : 'المجلد فارغ'}
+                  </div>
                 ) : (
                   <table>
                     <thead>
@@ -423,7 +513,7 @@ export default function Backup({ user }) {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={!browseData?.stored_path}
+                  disabled={browseData?.is_drive_root || !browseData?.stored_path}
                   onClick={handleSelectCurrentFolder}
                 >
                   اختيار هذا المجلد
