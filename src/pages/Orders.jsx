@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw, Search, Wifi } from 'lucide-react';
 import { api, mediaUrl } from '../api';
 import { useNotifications } from '../context/NotificationsContext';
+import { hasPermission } from '../utils/permissions';
 
 const STATUS_LABELS = {
   new: 'جديد',
@@ -280,6 +281,7 @@ function mergeOrdersFromServer(serverOrders, localOrders, savingId, fieldSnapsho
 }
 
 export default function Orders({ user }) {
+  const canViewCaptainStats = hasPermission(user, 'user_stats', 'view');
   const [orders, setOrders] = useState([]);
   const [captains, setCaptains] = useState([]);
   const [stores, setStores] = useState([]);
@@ -688,7 +690,7 @@ export default function Orders({ user }) {
           ))}
         </div>
 
-        {captainDoneStats.length > 0 && (
+        {canViewCaptainStats && captainDoneStats.length > 0 && (
           <div className="orders-captain-stats" aria-label="الطلبات المكتملة حسب الكابتن">
             {captainDoneStats.map((row) => (
               <div className="orders-captain-stat" key={row.captainId}>
