@@ -13,16 +13,19 @@ export const permissionActions = [
 ];
 
 export const permissionGroups = [
-  {
-    key: 'main',
-    label: 'الرئيسية',
-    children: [
-      { key: 'dashboard', label: 'لوحة التحكم', path: '/' },
-      { key: 'users', label: 'المستخدمين', path: '/users' },
-      { key: 'user_permissions', label: 'الصلاحيات', path: '/users/permissions' },
-      { key: 'backup', label: 'النسخ الاحتياطي', path: '/backup' },
-    ],
-  },
+
+{
+  key: 'main',
+  label: 'الرئيسية',
+  children: [
+    { key: 'dashboard', label: 'لوحة التحكم', path: '/' },
+    { key: 'user_stats', label: 'إحصائيات المستخدمين', path: '' },
+    { key: 'users', label: 'المستخدمين', path: '/users' },
+    { key: 'user_permissions', label: 'الصلاحيات', path: '/users/permissions' },
+    { key: 'backup', label: 'النسخ الاحتياطي', path: '/backup' },
+  ],
+},
+
   {
     key: 'operations',
     label: 'العمليات',
