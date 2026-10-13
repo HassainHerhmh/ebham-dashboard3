@@ -78,7 +78,10 @@ function formatOrderTime(value) {
 function formatOrderDate(value) {
   if (!value) return '—';
   try {
-    const d = new Date(value);
+    const dateOnly = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+    const d = dateOnly
+      ? new Date(Number(value.slice(0, 4)), Number(value.slice(5, 7)) - 1, Number(value.slice(8, 10)))
+      : new Date(value);
     if (Number.isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('ar-YE', {
       year: 'numeric',
@@ -91,7 +94,7 @@ function formatOrderDate(value) {
 }
 
 function orderDisplayDate(order) {
-  return order.created_at || order.done_at || order.updated_at || null;
+  return order.business_date || order.created_at || order.done_at || order.updated_at || null;
 }
 
 function formatStatusTimeline(order) {
@@ -244,6 +247,7 @@ function orderToForm(order) {
     customer_phone: order?.customer_phone || '',
     address_text: order?.address_text || '',
     map_link: order?.map_link || '',
+    business_date: order?.business_date || dateKeyFromValue(order?.created_at) || todayKey(),
     delivery_fee: order?.delivery_fee ?? '',
     payment_type: order?.payment_type || 'cash',
     captain_id: order?.captain_id || '',
@@ -307,6 +311,7 @@ export default function Orders({ user }) {
   const [form, setForm] = useState({
     customer_name: '',
     customer_phone: '',
+    business_date: todayKey(),
     address_text: '',
     map_link: '',
     delivery_fee: '',
@@ -471,6 +476,7 @@ export default function Orders({ user }) {
     setForm({
       customer_name: '',
       customer_phone: '',
+      business_date: todayKey(),
       address_text: '',
       map_link: '',
       delivery_fee: '',
@@ -569,7 +575,7 @@ export default function Orders({ user }) {
         await load();
         notify(`تم تعديل الطلب للعميل ${form.customer_name}`);
       } else {
-        const created = await api.createOrder(payload);
+        const created = await api.createOrder({ ...payload, business_date: form.business_date });
         closeOrderModal();
         await load();
         notify(`المستخدم ${user?.name || 'مستخدم'} أضاف الطلب للعميل ${created.customer_name}`);
@@ -956,6 +962,20 @@ export default function Orders({ user }) {
                   />
                 </div>
               </div>
+
+              {orderModal.mode === 'add' && (
+                <div className="form-row mt-2">
+                  <div className="form-group">
+                    <label>تاريخ الطلب</label>
+                    <input
+                      type="date"
+                      value={form.business_date}
+                      onChange={e => setForm({ ...form, business_date: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="finance-admin-section mt-2">
                 <h4 className="font-bold mb-3">تفاصيل الطلب حسب المحل</h4>
