@@ -844,9 +844,11 @@ export default function Orders({ user }) {
                         }}
                       >
                         <option value="">بدون تعيين</option>
-                        {captains.map(c => (
-                          <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
-                        ))}
+                        {captains
+                          .filter(c => Number(c.is_visible) !== 0 || String(c.id) === String(order.captain_id || ''))
+                          .map(c => (
+                            <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
+                          ))}
                       </select>
                     </td>
                     <td className="min-w-[130px]">
@@ -1055,9 +1057,11 @@ export default function Orders({ user }) {
                       onChange={e => setForm({ ...form, captain_id: e.target.value })}
                     >
                       <option value="">بدون تعيين</option>
-                      {captains.map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
-                      ))}
+                      {captains
+                        .filter(c => Number(c.is_visible) !== 0 || String(c.id) === String(form.captain_id || ''))
+                        .map(c => (
+                          <option key={c.id} value={c.id}>{c.name} ({c.captain_number})</option>
+                        ))}
                     </select>
                   </div>
                   <div className="form-group">
