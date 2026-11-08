@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Pencil, KeyRound, Users } from 'lucide-react';
+import { Pencil, KeyRound, Users, Eye, EyeOff } from 'lucide-react';
 import { api, mediaUrl } from '../api';
 
 function CaptainAvatar({ captain }) {
@@ -100,6 +100,15 @@ export default function Captains() {
     await api.deleteCaptain(id);
     load();
     loadGroups();
+  };
+
+  const handleToggleVisibility = async (captain) => {
+    try {
+      await api.toggleCaptainVisibility(captain.id);
+      load();
+    } catch (err) {
+      alert(err.message || 'حدث خطأ أثناء تغيير حالة الظهور');
+    }
   };
 
   const openResetPassword = (captain) => {
@@ -244,6 +253,15 @@ export default function Captains() {
                       >
                         <KeyRound size={14} />
                         كلمة المرور
+                      </button>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-blue-600 text-sm"
+                        onClick={() => handleToggleVisibility(c)}
+                        title={Number(c.is_visible) === 0 ? 'إظهار في قوائم التعيين' : 'إخفاء من قوائم التعيين'}
+                      >
+                        {Number(c.is_visible) === 0 ? <Eye size={14} /> : <EyeOff size={14} />}
+                        {Number(c.is_visible) === 0 ? 'إظهار' : 'إخفاء'}
                       </button>
                       <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDelete(c.id)}>حذف</button>
                     </div>
