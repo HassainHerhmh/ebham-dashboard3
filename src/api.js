@@ -99,6 +99,7 @@ export const api = {
 
   getCaptains: () => request('/captains').then(ensureArray),
   getCaptain: (id) => request(`/captains/${id}`),
+  toggleCaptainVisibility: (id) => request(`/captains/${id}/visibility`, { method: 'PATCH' }),
   createCaptain: (formData) => request('/captains', { method: 'POST', body: formData }),
   updateCaptain: (id, formData) => request(`/captains/${id}`, { method: 'PUT', body: formData }),
   resetCaptainPassword: (id, password) => request(`/captains/${id}/reset-password`, {
